@@ -1,0 +1,32 @@
+{
+  "name": "laplacian-deformation",
+  "version": "1.0.0",
+  "description": "Laplacian mesh deformation",
+  "main": "index.js",
+  "dependencies": {
+    "cholesky-solve": "^0.2.0",
+    "cuthill-mckee": "^1.0.0",
+    "csr-matrix": "^2.0.0"
+  },
+  "devDependencies": {
+    "tape": "^4.7.0"
+  },
+  "scripts": {
+    "test": "tape test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mikolalysenko/laplacian-deformation.git"
+  },
+  "keywords": [
+    "mesh",
+    "deformation",
+    "Laplacian"
+  ],
+  "author": "Mikola Lysenko, Eric Arneback",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mikolalysenko/laplacian-deformation/issues"
+  },
+  "homepage": "https://github.com/mikolalysenko/laplacian-deformation#readme"
+}
