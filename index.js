@@ -40,8 +40,13 @@ module.exports = function (cells, positions, handleIds) {
   // calculate square matrix
   var mmt = csrgemtm(augMat, augMat)
 
+  /*
+  // calculate preconditioner
   var pi = cmprecond(mmt, N)
-  var solve = ldl(mmt, N, pi)
+  */
+
+  // precalculate solver
+  var solve = ldl(mmt, N)
 
   var b = new Float64Array(M)
   var y = new Float64Array(N)
@@ -57,7 +62,10 @@ module.exports = function (cells, positions, handleIds) {
       for (var j = 0; j < handlePositions.length; ++j) {
         b[j + N] = handlePositions[j][d]
       }
-      var x = solve(augMat.apply(b, y))
+      augMat.apply(b, y)
+
+      var x = solve(y)
+
       for (var k = 0; k < N; ++k) {
         out[3 * k + d] = x[k]
       }

@@ -48,7 +48,7 @@ tape('translation', function (t) {
 
   const tetrahedron = ch('T')
   var runTest = testTranslate(tetrahedron.cells, tetrahedron.positions, 0)
-  runTest([0, 0, 0])
+  runTest([-1, -1, -1])
   runTest([1, 0, 0])
   runTest([0, 1, 0])
   runTest([0, 0, 1])
