@@ -8,15 +8,15 @@ function sparseDotProduct (
 
   var adlo = aptrs[a]
   var adhi = aptrs[a + 1]
-  var aclo = aids[astart]
+  var aclo = aids[a]
   var achi = aclo + adhi - adlo
 
   var bdlo = bptrs[b]
   var bdhi = bptrs[b + 1]
-  var bclo = bids[bstart]
+  var bclo = bids[b]
   var bchi = bclo + bdhi - bdlo
 
-  do {
+  while (true) {
     // intersect column intervals intervals
     var clo = Math.max(aclo, bclo)
     var chi = Math.min(achi, bchi)
@@ -33,21 +33,25 @@ function sparseDotProduct (
     var bstep = bchi <= achi
     if (astep) {
       // step a
-      ++a
+      if (++a >= aend) {
+        break
+      }
       adlo = aptrs[a]
       adhi = aptrs[a + 1]
-      aclo = aids[astart]
+      aclo = aids[a]
       achi = aclo + adhi - adlo
     }
     if (bstep) {
       // step b
-      ++b
+      if (++b >= bend) {
+        break
+      }
       bdlo = bptrs[b]
       bdhi = bptrs[b + 1]
-      bclo = bids[bstart]
+      bclo = bids[b]
       bchi = bclo + bdhi - bdlo
     }
-  } while (a < aend && b < bend)
+  }
 
   return result
 }
@@ -59,14 +63,14 @@ module.exports = function csrgemtm (a, b) {
 
   var arows = a.rows
   var arowPtrs = a.row_ptrs
-  var acols = a.cols
-  var acolPtrs = a.col_ptrs
+  var acols = a.columns
+  var acolPtrs = a.column_ptrs
   var adata = a.data
 
   var brows = b.rows
   var browPtrs = b.row_ptrs
-  var bcols = b.cols
-  var bcolPtrs = b.col_ptrs
+  var bcols = b.columns
+  var bcolPtrs = b.column_ptrs
   var bdata = b.data
 
   for (var i = 0; i < arows.length - 1; ++i) {
@@ -79,9 +83,13 @@ module.exports = function csrgemtm (a, b) {
       var bstart = browPtrs[j]
       var bend = browPtrs[j + 1]
 
-      result.push([r, c, sparseDotProduct(
+      var v = sparseDotProduct(
         astart, aend, acols, acolPtrs, adata,
-        bstart, bend, bcols, bcolPtrs, bdata)])
+        bstart, bend, bcols, bcolPtrs, bdata)
+
+      if (v) {
+        result.push([r, c, v])
+      }
     }
   }
 
