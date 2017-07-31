@@ -9,6 +9,7 @@
     "csr-matrix": "^2.0.0"
   },
   "devDependencies": {
+    "conway-hart": "^0.1.0",
     "tape": "^4.7.0"
   },
   "scripts": {
