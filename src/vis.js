@@ -2,8 +2,157 @@ const normals = require('angle-normals')
 const mat4 = require('gl-mat4')
 const vec3 = require('gl-vec3')
 
-const bunny = require('bunny')
+var bunny = require('bunny')
 const fit = require('canvas-fit')
+var ch = require('conway-hart')
+
+//var icosphere = require('icosphere')
+
+//bunny = icosphere(3)
+//var bunny = require('./bunny.json')
+
+var aabb = {
+  min: [+1000, +1000, +1000],
+  max: [-1000, -1000, -1000],
+}
+
+// find AABB for bunny.
+for(var j = 0; j < bunny.positions.length; ++j) {
+
+  var p = bunny.positions[j]
+
+  for(var i = 0; i < 3; ++i) {
+
+    if(p[i] < aabb.min[i]) {
+      aabb.min[i] = p[i]
+    }
+
+    if(p[i] > aabb.max[i]) {
+      aabb.max[i] = p[i]
+    }
+  }
+}
+
+// center translation
+var t = [
+  -0.5 * (aabb.min[0] + aabb.max[0]),
+  -0.5 * (aabb.min[1] + aabb.max[1]),
+  -0.5 * (aabb.min[2] + aabb.max[2]),
+]
+
+// i longest.
+var il = 0
+
+for(var i = 1; i < 3; ++i) {
+
+  if( (aabb.max[i]-aabb.min[i]) >  aabb.max[il]-aabb.min[il] )   {
+    il = i
+  }
+}
+var s = 1.0 / (aabb.max[il]-aabb.min[il])
+console.log(t)
+console.log(s)
+
+console.log(aabb)
+
+for(var j = 0; j < bunny.positions.length; ++j) {
+
+  var p = bunny.positions[j]
+
+  p[0] += t[0]
+  p[1] += t[1]
+  p[2] += t[2]
+
+  p[0] *= s
+  p[1] *= s
+  p[2] *= s
+
+
+}
+
+console.log("bunny: ", bunny)
+
+
+for(var j = 0; j < bunny.positions.length; ++j) {
+
+  var p = bunny.positions[j]
+  if(p[0] < -0.5 || p[0] > +0.5) {
+    console.log("WRONG")
+  }
+
+  if(p[1] < -0.5 || p[1] > +0.5) {
+    console.log("WRONG")
+  }
+
+  if(p[2] < -0.5 || p[2] > +0.5) {
+    console.log("WRONG")
+  }
+}
+
+
+// now calculate how to center box on origin.
+// solution: find longest side. now scale side so that it is unit length.
+// other sides will certainly fit in nit cube.
+// next calculate how to scale box to a unit cube.
+
+
+
+//bunny = ch('I')
+
+//console.log(bunny)
+
+var deform = require('../index')
+
+
+var handleId = 0
+
+var handles = []
+for(var i = 0; i < 20; ++i) {
+  handles[i] = i
+}
+
+console.log("handles: ", bunny.positions)
+
+
+
+var calcMesh = deform(bunny.cells, bunny.positions, handles)
+
+var baseP = bunny.positions[handleId]
+
+var offset = []
+offset[0] = 100.0
+offset[1] = 0.0
+offset[2] = 0.0
+
+var arr = []
+/*
+for(var i = 0; i < handles.length; ++i) {
+  arr[i] = bunny.positions[i]
+}
+*/
+arr[0] = [
+  bunny.positions[handleId][0] + 2.0,
+  bunny.positions[handleId][1],
+  bunny.positions[handleId][2],
+]
+
+for(var i = 1; i < 20; ++i) {
+  arr[i] = [
+  bunny.positions[i][0],
+  bunny.positions[i][1],
+  bunny.positions[i][2],
+]
+}
+
+var d = calcMesh(arr)
+
+console.log("orig:", bunny.positions)
+
+for(var i = 0; i < bunny.positions.length; ++i) {
+  bunny.positions[i] =  [d[i*3 + 0], d[i*3 + 1], d[i*3 + 2]]
+}
+
+console.log("mod: ", d)
 
 const canvas = document.body.appendChild(document.createElement('canvas'))
 const regl = require('regl')({canvas: canvas})
@@ -11,7 +160,7 @@ const camera = require('canvas-orbit-camera')(canvas)
 window.addEventListener('resize', fit(canvas), false)
 
 camera.rotate([0.0, 0.0], [0.0, -0.4])
-camera.zoom(10.0)
+camera.zoom(-20.0)
 //var mb = require('mouse-pressed')(canvas)
 var mp = require('mouse-position')(canvas)
 
@@ -44,7 +193,6 @@ function screenspaceMousePos() {
 var isDragging = true
 var omp // original mouse pos
 
-
 const drawBunny = regl({
   vert: `
   precision mediump float;
@@ -73,10 +221,11 @@ const drawBunny = regl({
     normal: normals(bunny.cells, bunny.positions)
   },
 
-  elements: bunny.cells,
+  elements:
+//  require("gl-wireframe")(bunny.cells),
+  bunny.cells,
+  primitive: 'triangles'
 })
-
-
 
 const drawHandle = regl({
   vert: `
