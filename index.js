@@ -124,7 +124,6 @@ function transpose (positions) {
 }
 
 module.exports = function (cells, positions, handleIds) {
-  console.log("original positons; ", positions)
   var N = positions.length
   var M = N + handleIds.length
   var coeffs = calcLaplacian(cells, positions)
@@ -142,7 +141,6 @@ module.exports = function (cells, positions, handleIds) {
   for (var i = 0; i < handleIds.length; ++i) {
     coeffs.push([i + N, handleIds[i], 1])
   }
-  console.log("coeffs: ", coeffs)
 
   var augMat = CSRMatrix.fromList(coeffs, M, N)
   // calculate square matrix
@@ -158,9 +156,9 @@ module.exports = function (cells, positions, handleIds) {
 
   var b = new Float64Array(M)
   var y = new Float64Array(N)
+  var out = new Float64Array(3 * N)
 
   return function (handlePositions, _out) {
-    var out = _out || new Float64Array(3 * N)
 
     for (var d = 0; d < 3; ++d) {
       var lp = delta[d]
@@ -170,26 +168,8 @@ module.exports = function (cells, positions, handleIds) {
       for (var j = 0; j < handlePositions.length; ++j) {
         b[j + N] = handlePositions[j][d]
       }
-      //augMat.apply(b, y)
-
       // use conjugate gradient.
-      var y = solve(b)
-
-      /*
-
-      console.log(positions)
-      console.log("d: ", d)
-      console.log("len: ", positions.length)
-      console.log("N: ", N)
-
-      for(var i = 0; i < N; ++i) {
-        y[i] = positions[i][d] + 0.0001
-      }
-      console.log("y: ", y)
-
-      pcg(augMat, b, y, 1e-6, 10000)
-      //      console.log(y)
-      */
+      solve(b, y)
 
       for (var k = 0; k < N; ++k) {
         out[3 * k + d] = y[k]
