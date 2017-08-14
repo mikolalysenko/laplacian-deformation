@@ -61,7 +61,6 @@ for(var j = 0; j < bunny.positions.length; ++j) {
 
 var copyBunny = JSON.parse(JSON.stringify(bunny))
 
-
 var handlesPos = [ ]
 var handles = []
 
@@ -73,20 +72,24 @@ function dist(u, v) {
   return Math.sqrt(dx*dx + dy*dy + dz*dz)
 }
 
+handles.push(675)
+
 for(var j = 0; j < bunny.positions.length; ++j) {
   var p = bunny.positions[j]
-  var accept = true
-  for(var i = 0; i < handles.length; ++i) {
-    if(dist(bunny.positions[handles[i]], p) < 0.2) {
-      accept = false
-      break
-    }
+  var accept = false
+  if(dist(bunny.positions[handles[0]], p) < 0.17) {
+    accept = true
   }
 
   if(accept) {
     handles.push(j)
   }
 }
+console.log(handles)
+
+//handles = [675]
+
+/*
 // adjacency structure.
 var adj = []
 var visited = []
@@ -109,7 +112,9 @@ for(var i = 0; i < bunny.cells.length; ++i) {
   }
 }
 
-var A = handles[3]
+
+
+var A = handles[0] // 3
 visited[A] = true
 var queue = []
 //queue.push(A)
@@ -122,7 +127,7 @@ for(var i = 0; i < adj[A].length; ++i) {
 
 var afterHandles = handles.length
 
-while(handles.length < 30) {
+while(handles.length < 60) {
   var e = queue.shift()
 
   if(visited[e]) {
@@ -138,17 +143,42 @@ while(handles.length < 30) {
   }
 }
 
+*/
+
+var afterHandles = handles.length
+
+
+for(var j = 0; j < bunny.positions.length; ++j) {
+  var p = bunny.positions[j]
+  var accept = true
+  for(var i = 0; i < handles.length; ++i) {
+    if(dist(bunny.positions[handles[i]], p) < 0.15) {
+      accept = false
+      break
+    }
+  }
+
+  if(accept) {
+    handles.push(j)
+  }
+}
+
+
+
+
+
 for(var i = 0; i < handles.length; ++i) {
   var p = bunny.positions[handles[i]]
   handlesPos.push(p)
 }
 
+console.log(handlesPos)
+console.log(handles)
+
 var deform = require('../index')
 
 var calcMesh = deform(bunny.cells, bunny.positions, handles)
-
-
-
+//console.log(handles[4])
 
 
 
@@ -207,15 +237,14 @@ for(var i = 0; i < handles.length; ++i) {
 function mydeform(offset) {
   //  offset = [+0.2, +0.30, -0.14]
 
-//  bunny = JSON.parse(JSON.stringify(copyBunny))
+  bunny = JSON.parse(JSON.stringify(copyBunny))
 
   var arr = []
 
   for(var i = 0; i < handles.length; ++i) {
     var hi = handles[i]
 
-    if(i == 3
-       || i >= afterHandles
+    if(i < afterHandles
 
       ) {
       arr[i] = [
@@ -244,15 +273,16 @@ function mydeform(offset) {
 
   positionBuffer.subdata(bunny.positions)
 }
+mydeform([+0.0, +0.0, 0.0])
 
-mydeform([+0.2, +0.30, -0.14])
+//ydeform([+0.2, +0.30, -0.14])
 
 
 const camera = require('canvas-orbit-camera')(canvas)
 window.addEventListener('resize', fit(canvas), false)
 
 camera.rotate([0.0, 0.0], [0.0, -0.4])
-camera.zoom(-20.0)
+camera.zoom(-30.0)
 //var mb = require('mouse-pressed')(canvas)
 var mp = require('mouse-position')(canvas)
 
@@ -291,7 +321,7 @@ const drawHandle = regl({
   void main() {
 
 //    gl_PointSize = 10.0;
-    gl_PointSize = 3.0;
+    gl_PointSize = 5.0;
 
     gl_Position = projection * view * vec4(
       position
@@ -329,9 +359,10 @@ function dist(a, b) {
 
 var counter = 0
 
-canvas.addEventListener('mousedown', mousedown, false)
-function mousedown() {
+window.onkeyup = function(e) {
+var key = e.keyCode ? e.keyCode : e.which;
 
+  if (key == 82) {
   if(counter==0) {
     mydeform([+0.4, +0.0, -0.0])
   } else if(counter==1) {
@@ -346,9 +377,15 @@ function mousedown() {
     mydeform([+0.0, -0.0, -0.4])
   }
 
-
-
   counter++
+  }
+}
+
+canvas.addEventListener('mousedown', mousedown, false)
+function mousedown() {
+
+
+
 
 //mb.on('down', function () {
 //  var vp = mat4.multiply([], projectionMatrix, viewMatrix)
@@ -408,11 +445,11 @@ regl.frame(({viewportWidth, viewportHeight}) => {
         c = [1.0, 0.0, 0.0]
       }
 
-      if(i == 3) { // 3
+      if(i == 0) { // 3
         c = [0.0, 0.0, 1.0]
       }
 
-//      drawHandle({pos: handle, color: c})
+      drawHandle({pos: handle, color: c})
     }
   })
 
