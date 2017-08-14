@@ -1,6 +1,6 @@
 var bits = require("bit-twiddle")
   , almostEqual = require("almost-equal")
-
+var qrSolve = require("qr-solve")
 var R = new Float64Array(1024)
 var P = new Float64Array(1024)
 var D = new Float64Array(1024)
@@ -94,6 +94,7 @@ function conjugateGradient(A, b, x, tolerance, max_iter) {
       P[i] = U[i] + beta * P[i]
     }
   }
+  console.log("rnorm: ", rnorm)
   return x
 }
 
@@ -123,6 +124,7 @@ function transpose (positions) {
 }
 
 module.exports = function (cells, positions, handleIds) {
+  console.log("original positons; ", positions)
   var N = positions.length
   var M = N + handleIds.length
   var coeffs = calcLaplacian(cells, positions)
@@ -140,6 +142,7 @@ module.exports = function (cells, positions, handleIds) {
   for (var i = 0; i < handleIds.length; ++i) {
     coeffs.push([i + N, handleIds[i], 1])
   }
+  console.log("coeffs: ", coeffs)
 
   var augMat = CSRMatrix.fromList(coeffs, M, N)
   // calculate square matrix
@@ -151,7 +154,7 @@ module.exports = function (cells, positions, handleIds) {
   */
 
   // precalculate solver
-//  var solve = ldl(mmt, N)
+  var solve = qrSolve.prepare(coeffs, M, N)
 
   var b = new Float64Array(M)
   var y = new Float64Array(N)
@@ -170,9 +173,23 @@ module.exports = function (cells, positions, handleIds) {
       //augMat.apply(b, y)
 
       // use conjugate gradient.
-//      var x = solve(y)
+      var y = solve(b)
+
+      /*
+
+      console.log(positions)
+      console.log("d: ", d)
+      console.log("len: ", positions.length)
+      console.log("N: ", N)
+
+      for(var i = 0; i < N; ++i) {
+        y[i] = positions[i][d] + 0.0001
+      }
+      console.log("y: ", y)
 
       pcg(augMat, b, y, 1e-6, 10000)
+      //      console.log(y)
+      */
 
       for (var k = 0; k < N; ++k) {
         out[3 * k + d] = y[k]

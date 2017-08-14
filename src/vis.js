@@ -50,10 +50,6 @@ for(var i = 1; i < 3; ++i) {
   }
 }
 var s = 1.0 / (aabb.max[il]-aabb.min[il])
-console.log(t)
-console.log(s)
-
-console.log(aabb)
 
 for(var j = 0; j < bunny.positions.length; ++j) {
 
@@ -66,27 +62,109 @@ for(var j = 0; j < bunny.positions.length; ++j) {
   p[0] *= s
   p[1] *= s
   p[2] *= s
-
-
 }
 
-console.log("bunny: ", bunny)
+var handlesPos = [ ]
+var handles = []
 
+function dist(u, v) {
+  var dx = u[0] - v[0]
+  var dy = u[1] - v[1]
+  var dz = u[2] - v[2]
+
+  return Math.sqrt(dx*dx + dy*dy + dz*dz)
+}
 
 for(var j = 0; j < bunny.positions.length; ++j) {
-
   var p = bunny.positions[j]
-  if(p[0] < -0.5 || p[0] > +0.5) {
-    console.log("WRONG")
+  var accept = true
+  for(var i = 0; i < handles.length; ++i) {
+    if(dist(bunny.positions[handles[i]], p) < 0.2) {
+      accept = false
+      break
+    }
   }
 
-  if(p[1] < -0.5 || p[1] > +0.5) {
-    console.log("WRONG")
+  if(accept) {
+    handles.push(j)
+  }
+}
+console.log("handles: ", handles)
+
+// adjacency structure.
+var adj = []
+var visited = []
+
+for(var i = 0; i < bunny.positions.length; ++i) {
+  adj[i] = []
+  visited[i] = false
+}
+
+console.log("lol")
+
+for(var i = 0; i < bunny.cells.length; ++i) {
+
+  var c = bunny.cells[i]
+
+  for(var j = 0; j < 3; ++j) {
+
+    var a = c[j+0]
+    var b = c[(j+1) % 3]
+
+    adj[a].push(b)
+  }
+}
+
+var A = handles[17]
+visited[A] = true
+var queue = []
+//queue.push(A)
+for(var i = 0; i < adj[A].length; ++i) {
+//  handles.push(adj[A][i])
+//  visited[adj[A][i]] = true
+
+  queue.push(adj[A][i])
+}
+
+var afterHandles = handles.length
+
+while(handles.length < 30) {
+  var e = queue.shift()
+
+  if(visited[e]) {
+    // fuck it, already visited.
+    continue
   }
 
-  if(p[2] < -0.5 || p[2] > +0.5) {
-    console.log("WRONG")
+  visited[e] = true
+  handles.push(e)
+
+  for(var i = 0; i < adj[e].length; ++i) {
+    queue.push(adj[e][i])
   }
+}
+
+
+
+for(var i = 0; i < handles.length; ++i) {
+  var p = bunny.positions[handles[i]]
+  handlesPos.push(p)
+}
+
+console.log("handles: ", handles)
+
+var cop = handles.slice()
+cop.sort()
+console.log("cop: ", cop)
+
+for(var i = 0; i < cop.length-1; ++i) {
+  var a = cop[i+0]
+  var b = cop[i+1]
+
+  if(a == b) {
+    console.log("NOT UNIQUE: ", a)
+  }
+
 }
 
 
@@ -95,53 +173,35 @@ for(var j = 0; j < bunny.positions.length; ++j) {
 // other sides will certainly fit in nit cube.
 // next calculate how to scale box to a unit cube.
 
-
-
-//bunny = ch('I')
-
-//console.log(bunny)
+console.log("handles: ", handles)
 
 var deform = require('../index')
 
-
-var handleId = 0
-
-var handles = []
-for(var i = 0; i < 20; ++i) {
-  handles[i] = i
-}
-
-console.log("handles: ", bunny.positions)
-
-
-
 var calcMesh = deform(bunny.cells, bunny.positions, handles)
 
-var baseP = bunny.positions[handleId]
-
-var offset = []
-offset[0] = 100.0
-offset[1] = 0.0
-offset[2] = 0.0
+var offset = [-0.1, 0.0, 0.0]
 
 var arr = []
-/*
-for(var i = 0; i < handles.length; ++i) {
-  arr[i] = bunny.positions[i]
-}
-*/
-arr[0] = [
-  bunny.positions[handleId][0] + 2.0,
-  bunny.positions[handleId][1],
-  bunny.positions[handleId][2],
-]
 
-for(var i = 1; i < 20; ++i) {
+for(var i = 0; i < handles.length; ++i) {
+  var hi = handles[i]
+
+  if(i == 17
+      || i >= afterHandles
+
+    ) {
   arr[i] = [
-  bunny.positions[i][0],
-  bunny.positions[i][1],
-  bunny.positions[i][2],
-]
+    bunny.positions[hi][0] + 0.2,
+    bunny.positions[hi][1] + 0.30,
+    bunny.positions[hi][2] - 0.14
+    ]
+  } else {
+  arr[i] = [
+    bunny.positions[hi][0],
+    bunny.positions[hi][1],
+    bunny.positions[hi][2]
+    ]
+  }
 }
 
 var d = calcMesh(arr)
@@ -153,6 +213,9 @@ for(var i = 0; i < bunny.positions.length; ++i) {
 }
 
 console.log("mod: ", d)
+
+console.log("bunny.positions: ", bunny.positions)
+
 
 const canvas = document.body.appendChild(document.createElement('canvas'))
 const regl = require('regl')({canvas: canvas})
@@ -171,10 +234,6 @@ var projectionMatrix = mat4.perspective([],
                        1000)
 
 var pickedHandle = -1
-var handles = [
-  [0.0, 7.0, 0.0], // 7
-  [10.0, 10.0, 0.0],
-]
 
 const globalScope = regl({
   uniforms: {
@@ -235,7 +294,7 @@ const drawHandle = regl({
   void main() {
 
 //    gl_PointSize = 10.0;
-    gl_PointSize = 8.0;
+    gl_PointSize = 3.0;
 
     gl_Position = projection * view * vec4(
       position
@@ -267,8 +326,6 @@ const drawHandle = regl({
   }
 })
 
-console.log(canvas.width, canvas.height)
-
 function dist(a, b) {
   return Math.sqrt(  (a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1])  )
 }
@@ -289,8 +346,8 @@ function mousedown() {
   var vp = mat4.multiply([], projectionMatrix, viewMatrix)
 
   var found = false
-  for(var i = 0; i < handles.length; ++i) {
-    var hp = (vec3.transformMat4([], handles[i], vp))
+  for(var i = 0; i < handlesPos.length; ++i) {
+    var hp = (vec3.transformMat4([], handlesPos[i], vp))
 
     var d = dist(  mousePos, [hp[0], hp[1]] )
 
@@ -308,8 +365,6 @@ function mousedown() {
     isDragging = true
 
     omp = [mousePos[0], mousePos[1]]
-
-    console.log(omp)
   }
 }
 
@@ -317,8 +372,6 @@ canvas.addEventListener('mouseup', mouseup, false)
 function mouseup() {
 
   isDragging = false
-
-//  console.log("MOUSE UP")
 }
 
 
@@ -331,8 +384,9 @@ regl.frame(({viewportWidth, viewportHeight}) => {
   globalScope( () => {
     drawBunny()
 
-    for(var i = 0; i < handles.length; ++i) {
-      var handle = handles[i]
+    for(var i = 0; i < handlesPos.length; ++i) {
+//      if(i != 3) continue
+      var handle = handlesPos[i]
 
       var c = [0.0, 1.0, 0.0]
 
@@ -340,7 +394,11 @@ regl.frame(({viewportWidth, viewportHeight}) => {
         c = [1.0, 0.0, 0.0]
       }
 
-      drawHandle({pos: handle, color: c})
+      if(i == 3) { // 3
+        c = [0.0, 0.0, 1.0]
+      }
+
+//      drawHandle({pos: handle, color: c})
     }
   })
 
