@@ -61,7 +61,7 @@ for(var j = 0; j < bunny.positions.length; ++j) {
 }
 
 var copyBunny = JSON.parse(JSON.stringify(bunny))
-
+var deform = require('../index')
 
 function dist(u, v) {
   var dx = u[0] - v[0]
@@ -71,49 +71,52 @@ function dist(u, v) {
   return Math.sqrt(dx*dx + dy*dy + dz*dz)
 }
 
-var handlesObj = {
-  handles: []
-}
-
-handlesObj.handles.push(40)
-
-for(var j = 0; j < bunny.positions.length; ++j) {
-  var p = bunny.positions[j]
-  var accept = false
-  if(dist(bunny.positions[handlesObj.handles[0]], p) < 0.16) {
-    accept = true
+function makeHandlesObj(mainHandle) {
+  var newHandlesObj = {
+    handles: []
   }
 
-  if(accept) {
-    handlesObj.handles.push(j)
-  }
-}
+  newHandlesObj.handles.push(mainHandle)
 
-//handles = [675]
+  for(var j = 0; j < bunny.positions.length; ++j) {
+    var p = bunny.positions[j]
+    var accept = false
+    if(dist(bunny.positions[newHandlesObj.handles[0]], p) < 0.16) {
+      accept = true
+    }
 
-handlesObj.afterHandles = handlesObj.handles.length
-
-for(var j = 0; j < bunny.positions.length; ++j) {
-  var p = bunny.positions[j]
-  var accept = true
-  for(var i = 0; i < handlesObj.handles.length; ++i) {
-    if(dist(bunny.positions[handlesObj.handles[i]], p) < 0.30) {
-      accept = false
-      break
+    if(accept) {
+      newHandlesObj.handles.push(j)
     }
   }
 
-  if(accept) {
-    handlesObj.handles.push(j)
+  newHandlesObj.afterHandles = newHandlesObj.handles.length
+
+  for(var j = 0; j < bunny.positions.length; ++j) {
+    var p = bunny.positions[j]
+    var accept = true
+    for(var i = 0; i < newHandlesObj.handles.length; ++i) {
+      if(dist(bunny.positions[newHandlesObj.handles[i]], p) < 0.16) {
+        accept = false
+        break
+      }
+    }
+
+    if(accept) {
+      newHandlesObj.handles.push(j)
+    }
   }
+
+  newHandlesObj.calcMesh = deform(bunny.cells, bunny.positions, newHandlesObj.handles)
+  //console.log(handles[4])
+  return newHandlesObj
 }
 
+//var handlesObj1 = makeHandlesObj(40)
+var handlesObj1 = makeHandlesObj(40)
+var handlesObj2 = makeHandlesObj(675)
 
-
-var deform = require('../index')
-
-var calcMesh = deform(bunny.cells, bunny.positions, handlesObj.handles)
-//console.log(handles[4])
+var handlesObj = handlesObj1
 
 const canvas = document.body.appendChild(document.createElement('canvas'))
 const regl = require('regl')({canvas: canvas})
@@ -161,13 +164,14 @@ var drawBunny = regl({
     primitive: 'triangles'
   })
 
-var arr = []
-for(var i = 0; i < handlesObj.handles.length; ++i) {
-  arr[i] = []
-}
+
 
 
 function mydeform(offset) {
+  var arr = []
+  for(var i = 0; i < handlesObj.handles.length; ++i) {
+    arr[i] = []
+  }
   //  offset = [+0.2, +0.30, -0.14]
   var arr = []
 
@@ -192,7 +196,7 @@ function mydeform(offset) {
     }
   }
 
-  var d = calcMesh(arr)
+  var d = handlesObj.calcMesh(arr)
 
   for(var i = 0; i < bunny.positions.length; ++i) {
     bunny.positions[i][0] = d[i*3 + 0]
@@ -305,6 +309,13 @@ window.onkeyup = function(e) {
     movecamera = false
   }
 
+  if (key == 49) {
+    handlesObj = handlesObj1
+    console.log("obj1")
+  } else if (key == 50) {
+    handlesObj = handlesObj2
+    console.log("obj2")
+  }
 
   if (key == 82) {
   if(counter==0) {
