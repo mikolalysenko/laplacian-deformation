@@ -12,6 +12,7 @@
     "conjugate-gradient": "0.0.2",
     "csr-matrix": "~0.1.4",
     "cuthill-mckee": "^1.0.0",
+    "gl-camera-pos-from-view-matrix": "^1.0.1",
     "gl-mat4": "^1.1.4",
     "gl-vec3": "^1.0.3",
     "gl-wireframe": "^1.0.1",

@@ -5,6 +5,7 @@ const vec3 = require('gl-vec3')
 var bunny = require('bunny')
 const fit = require('canvas-fit')
 var ch = require('conway-hart')
+var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
 
 var aabb = {
   min: [+1000, +1000, +1000],
@@ -384,9 +385,6 @@ var key = e.keyCode ? e.keyCode : e.which;
 canvas.addEventListener('mousedown', mousedown, false)
 function mousedown() {
 
-
-
-
 //mb.on('down', function () {
 //  var vp = mat4.multiply([], projectionMatrix, viewMatrix)
   //  var rayPoint = vec3.transformMat4([], [2.0 * mp[0] / canvas.width - 1.0, -2.0 * mp[1] / canvas.height + 1.0, 0.0], invVp)
@@ -408,7 +406,7 @@ function mousedown() {
       break
     }
   }
-
+/*
   if(!found) {
     pickedHandle = -1
     isDragging = false
@@ -417,14 +415,55 @@ function mousedown() {
 
     omp = [mousePos[0], mousePos[1]]
   }
+*/
+
+  isDragging = true
+  omp = [mousePos[0], mousePos[1]]
+
+  var view = camera.view()
+  var vp = []
+  mat4.multiply(vp, projectionMatrix, view)
+
+  var inverseVp = []
+  mat4.invert(inverseVp, vp)
+
+  var v = []
+  vec3.transformMat4(v, [mousePos[0], mousePos[1], 0], inverseVp)
+
+
+  var camPos = cameraPosFromViewMatrix([], view)
+
+  // ray direction and origin
+  var d = [v[0] - camPos[0], v[1] - camPos[1], v[2] - camPos[2]]
+  var o = [camPos[0], camPos[1], camPos[2]]
+
+// plane point, and normal.
+  var pr0 = bunny.positions[handles[0]]
+  var pn = [camPos[0] - pr0[0], camPos[1] - pr0[1], camPos[2] - pr0[2]]
+
+  vec3.normalize(pn, pn)
+
+  var t = (vec3.dot(pn, pr0) - vec3.dot(pn, o)) / vec3.dot(d, pn)
+
+  var p = vec3.add([],  o,   vec3.scale([], d, t)   )
+  //p - pr0
+  var def = vec3.subtract([], p, pr0)
+
+  mydeform(def)
 }
 
 canvas.addEventListener('mouseup', mouseup, false)
 function mouseup() {
+  var mousePos = screenspaceMousePos()
+
+  if(isDragging) {
+    var amp = [mousePos[0], mousePos[1]]
+  }
 
   isDragging = false
 }
 
+  camera.tick()
 
 regl.frame(({viewportWidth, viewportHeight}) => {
   regl.clear({
@@ -453,7 +492,6 @@ regl.frame(({viewportWidth, viewportHeight}) => {
     }
   })
 
-  camera.tick()
 })
 
 // all way left is -1= x.
