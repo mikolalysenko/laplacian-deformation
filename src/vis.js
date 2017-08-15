@@ -62,7 +62,6 @@ for(var j = 0; j < bunny.positions.length; ++j) {
 
 var copyBunny = JSON.parse(JSON.stringify(bunny))
 
-var handles = []
 
 function dist(u, v) {
   var dx = u[0] - v[0]
@@ -72,46 +71,48 @@ function dist(u, v) {
   return Math.sqrt(dx*dx + dy*dy + dz*dz)
 }
 
-handles.push(40)
+var handlesObj = {
+  handles: []
+}
+
+handlesObj.handles.push(40)
 
 for(var j = 0; j < bunny.positions.length; ++j) {
   var p = bunny.positions[j]
   var accept = false
-  if(dist(bunny.positions[handles[0]], p) < 0.16) {
+  if(dist(bunny.positions[handlesObj.handles[0]], p) < 0.16) {
     accept = true
   }
 
   if(accept) {
-    handles.push(j)
+    handlesObj.handles.push(j)
   }
 }
-console.log(handles)
 
 //handles = [675]
 
-var afterHandles = handles.length
+handlesObj.afterHandles = handlesObj.handles.length
 
 for(var j = 0; j < bunny.positions.length; ++j) {
   var p = bunny.positions[j]
   var accept = true
-  for(var i = 0; i < handles.length; ++i) {
-    if(dist(bunny.positions[handles[i]], p) < 0.30) {
+  for(var i = 0; i < handlesObj.handles.length; ++i) {
+    if(dist(bunny.positions[handlesObj.handles[i]], p) < 0.30) {
       accept = false
       break
     }
   }
 
   if(accept) {
-    handles.push(j)
+    handlesObj.handles.push(j)
   }
 }
 
 
-console.log(handles)
 
 var deform = require('../index')
 
-var calcMesh = deform(bunny.cells, bunny.positions, handles)
+var calcMesh = deform(bunny.cells, bunny.positions, handlesObj.handles)
 //console.log(handles[4])
 
 const canvas = document.body.appendChild(document.createElement('canvas'))
@@ -161,7 +162,7 @@ var drawBunny = regl({
   })
 
 var arr = []
-for(var i = 0; i < handles.length; ++i) {
+for(var i = 0; i < handlesObj.handles.length; ++i) {
   arr[i] = []
 }
 
@@ -170,10 +171,10 @@ function mydeform(offset) {
   //  offset = [+0.2, +0.30, -0.14]
   var arr = []
 
-  for(var i = 0; i < handles.length; ++i) {
-    var hi = handles[i]
+  for(var i = 0; i < handlesObj.handles.length; ++i) {
+    var hi = handlesObj.handles[i]
 
-    if(i < afterHandles
+    if(i < handlesObj.afterHandles
 
       ) {
       arr[i] = [
@@ -367,9 +368,9 @@ regl.frame(({viewportWidth, viewportHeight}) => {
   globalScope( () => {
     drawBunny()
 
-    for(var i = 0; i < handles.length; ++i) {
+    for(var i = 0; i < handlesObj.handles.length; ++i) {
 //      if(i != 3) continue
-      var handle = bunny.positions[handles[i]]
+      var handle = bunny.positions[handlesObj.handles[i]]
 
       var c = [0.0, 1.0, 0.0]
 
@@ -407,7 +408,7 @@ regl.frame(({viewportWidth, viewportHeight}) => {
     var o = [camPos[0], camPos[1], camPos[2]]
 
     // plane point, and normal.
-    var pr0 = bunny.positions[handles[0]]
+    var pr0 = bunny.positions[handlesObj.handles[0]]
     var pn = [camPos[0] - pr0[0], camPos[1] - pr0[1], camPos[2] - pr0[2]]
 
     vec3.normalize(pn, pn)
