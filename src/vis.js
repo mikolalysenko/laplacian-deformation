@@ -73,12 +73,13 @@ function dist(u, v) {
   return Math.sqrt(dx*dx + dy*dy + dz*dz)
 }
 
-handles.push(675)
+//handles.push(675)
+handles.push(40)
 
 for(var j = 0; j < bunny.positions.length; ++j) {
   var p = bunny.positions[j]
   var accept = false
-  if(dist(bunny.positions[handles[0]], p) < 0.17) {
+  if(dist(bunny.positions[handles[0]], p) < 0.16) {
     accept = true
   }
 
@@ -153,7 +154,7 @@ for(var j = 0; j < bunny.positions.length; ++j) {
   var p = bunny.positions[j]
   var accept = true
   for(var i = 0; i < handles.length; ++i) {
-    if(dist(bunny.positions[handles[i]], p) < 0.15) {
+    if(dist(bunny.positions[handles[i]], p) < 0.30) {
       accept = false
       break
     }
@@ -163,9 +164,6 @@ for(var j = 0; j < bunny.positions.length; ++j) {
     handles.push(j)
   }
 }
-
-
-
 
 
 for(var i = 0; i < handles.length; ++i) {
@@ -237,9 +235,6 @@ for(var i = 0; i < handles.length; ++i) {
 
 function mydeform(offset) {
   //  offset = [+0.2, +0.30, -0.14]
-
-  bunny = JSON.parse(JSON.stringify(copyBunny))
-
   var arr = []
 
   for(var i = 0; i < handles.length; ++i) {
@@ -309,7 +304,7 @@ function screenspaceMousePos() {
   return [2.0 * mp[0] / canvas.width - 1.0, -2.0 * mp[1] / canvas.height + 1.0]
 }
 
-var isDragging = true
+var isDragging = false
 var omp // original mouse pos
 
 
@@ -359,9 +354,23 @@ function dist(a, b) {
 }
 
 var counter = 0
+var movecamera = false
+
+window.onkeydown = function(e) {
+var key = e.keyCode ? e.keyCode : e.which;
+
+  if (key == 81) {
+    movecamera = true
+  }
+}
 
 window.onkeyup = function(e) {
-var key = e.keyCode ? e.keyCode : e.which;
+  var key = e.keyCode ? e.keyCode : e.which;
+
+  if (key == 81) {
+    movecamera = false
+  }
+
 
   if (key == 82) {
   if(counter==0) {
@@ -385,15 +394,9 @@ var key = e.keyCode ? e.keyCode : e.which;
 canvas.addEventListener('mousedown', mousedown, false)
 function mousedown() {
 
-//mb.on('down', function () {
-//  var vp = mat4.multiply([], projectionMatrix, viewMatrix)
-  //  var rayPoint = vec3.transformMat4([], [2.0 * mp[0] / canvas.width - 1.0, -2.0 * mp[1] / canvas.height + 1.0, 0.0], invVp)
-
-  var mousePos = screenspaceMousePos()
-
+  /*
   var viewMatrix = camera.view()
   var vp = mat4.multiply([], projectionMatrix, viewMatrix)
-
   var found = false
   for(var i = 0; i < handlesPos.length; ++i) {
     var hp = (vec3.transformMat4([], handlesPos[i], vp))
@@ -406,59 +409,17 @@ function mousedown() {
       break
     }
   }
-/*
-  if(!found) {
-    pickedHandle = -1
-    isDragging = false
-  } else {
+  */
+
+  if(!movecamera) {
     isDragging = true
 
-    omp = [mousePos[0], mousePos[1]]
   }
-*/
-
-  isDragging = true
-  omp = [mousePos[0], mousePos[1]]
-
-  var view = camera.view()
-  var vp = []
-  mat4.multiply(vp, projectionMatrix, view)
-
-  var inverseVp = []
-  mat4.invert(inverseVp, vp)
-
-  var v = []
-  vec3.transformMat4(v, [mousePos[0], mousePos[1], 0], inverseVp)
-
-
-  var camPos = cameraPosFromViewMatrix([], view)
-
-  // ray direction and origin
-  var d = [v[0] - camPos[0], v[1] - camPos[1], v[2] - camPos[2]]
-  var o = [camPos[0], camPos[1], camPos[2]]
-
-// plane point, and normal.
-  var pr0 = bunny.positions[handles[0]]
-  var pn = [camPos[0] - pr0[0], camPos[1] - pr0[1], camPos[2] - pr0[2]]
-
-  vec3.normalize(pn, pn)
-
-  var t = (vec3.dot(pn, pr0) - vec3.dot(pn, o)) / vec3.dot(d, pn)
-
-  var p = vec3.add([],  o,   vec3.scale([], d, t)   )
-  //p - pr0
-  var def = vec3.subtract([], p, pr0)
-
-  mydeform(def)
 }
 
 canvas.addEventListener('mouseup', mouseup, false)
 function mouseup() {
   var mousePos = screenspaceMousePos()
-
-  if(isDragging) {
-    var amp = [mousePos[0], mousePos[1]]
-  }
 
   isDragging = false
 }
@@ -491,6 +452,47 @@ regl.frame(({viewportWidth, viewportHeight}) => {
       drawHandle({pos: handle, color: c})
     }
   })
+
+  if(isDragging) {
+  var mousePos = screenspaceMousePos()
+
+    omp = [mousePos[0], mousePos[1]]
+
+    var view = camera.view()
+    var vp = []
+    mat4.multiply(vp, projectionMatrix, view)
+
+    var inverseVp = []
+    mat4.invert(inverseVp, vp)
+
+    var v = []
+    vec3.transformMat4(v, [mousePos[0], mousePos[1], 0], inverseVp)
+
+    var camPos = cameraPosFromViewMatrix([], view)
+
+    // ray direction and origin
+    var d = [v[0] - camPos[0], v[1] - camPos[1], v[2] - camPos[2]]
+    var o = [camPos[0], camPos[1], camPos[2]]
+
+    // plane point, and normal.
+    var pr0 = bunny.positions[handles[0]]
+    var pn = [camPos[0] - pr0[0], camPos[1] - pr0[1], camPos[2] - pr0[2]]
+
+    vec3.normalize(pn, pn)
+
+    var t = (vec3.dot(pn, pr0) - vec3.dot(pn, o)) / vec3.dot(d, pn)
+
+    var p = vec3.add([],  o,   vec3.scale([], d, t)   )
+    //p - pr0
+    var def = vec3.subtract([], p, pr0)
+
+    mydeform(def)
+
+  }
+
+  if(movecamera) {
+      camera.tick()
+  }
 
 })
 
