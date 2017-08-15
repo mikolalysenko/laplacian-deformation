@@ -62,7 +62,6 @@ for(var j = 0; j < bunny.positions.length; ++j) {
 
 var copyBunny = JSON.parse(JSON.stringify(bunny))
 
-var handlesPos = [ ]
 var handles = []
 
 function dist(u, v) {
@@ -73,7 +72,6 @@ function dist(u, v) {
   return Math.sqrt(dx*dx + dy*dy + dz*dz)
 }
 
-//handles.push(675)
 handles.push(40)
 
 for(var j = 0; j < bunny.positions.length; ++j) {
@@ -91,64 +89,7 @@ console.log(handles)
 
 //handles = [675]
 
-/*
-// adjacency structure.
-var adj = []
-var visited = []
-
-for(var i = 0; i < bunny.positions.length; ++i) {
-  adj[i] = []
-  visited[i] = false
-}
-
-for(var i = 0; i < bunny.cells.length; ++i) {
-
-  var c = bunny.cells[i]
-
-  for(var j = 0; j < 3; ++j) {
-
-    var a = c[j+0]
-    var b = c[(j+1) % 3]
-
-    adj[a].push(b)
-  }
-}
-
-
-
-var A = handles[0] // 3
-visited[A] = true
-var queue = []
-//queue.push(A)
-for(var i = 0; i < adj[A].length; ++i) {
-//  handles.push(adj[A][i])
-//  visited[adj[A][i]] = true
-
-  queue.push(adj[A][i])
-}
-
 var afterHandles = handles.length
-
-while(handles.length < 60) {
-  var e = queue.shift()
-
-  if(visited[e]) {
-    // fuck it, already visited.
-    continue
-  }
-
-  visited[e] = true
-  handles.push(e)
-
-  for(var i = 0; i < adj[e].length; ++i) {
-    queue.push(adj[e][i])
-  }
-}
-
-*/
-
-var afterHandles = handles.length
-
 
 for(var j = 0; j < bunny.positions.length; ++j) {
   var p = bunny.positions[j]
@@ -166,20 +107,12 @@ for(var j = 0; j < bunny.positions.length; ++j) {
 }
 
 
-for(var i = 0; i < handles.length; ++i) {
-  var p = bunny.positions[handles[i]]
-  handlesPos.push(p)
-}
-
-console.log(handlesPos)
 console.log(handles)
 
 var deform = require('../index')
 
 var calcMesh = deform(bunny.cells, bunny.positions, handles)
 //console.log(handles[4])
-
-
 
 const canvas = document.body.appendChild(document.createElement('canvas'))
 const regl = require('regl')({canvas: canvas})
@@ -393,7 +326,6 @@ window.onkeyup = function(e) {
 
 canvas.addEventListener('mousedown', mousedown, false)
 function mousedown() {
-
   /*
   var viewMatrix = camera.view()
   var vp = mat4.multiply([], projectionMatrix, viewMatrix)
@@ -435,9 +367,9 @@ regl.frame(({viewportWidth, viewportHeight}) => {
   globalScope( () => {
     drawBunny()
 
-    for(var i = 0; i < handlesPos.length; ++i) {
+    for(var i = 0; i < handles.length; ++i) {
 //      if(i != 3) continue
-      var handle = handlesPos[i]
+      var handle = bunny.positions[handles[i]]
 
       var c = [0.0, 1.0, 0.0]
 
