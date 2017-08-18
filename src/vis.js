@@ -114,10 +114,11 @@ function makeHandlesObj(mainHandle) {
 }
 
 //var handlesObj1 = makeHandlesObj(40)
-var handlesObjArr = [makeHandlesObj(40), makeHandlesObj(675)]
-//var handlesObjArr = []
+// 850, 975, 156, 1523
+var handlesObjArr = [
+  makeHandlesObj(40), makeHandlesObj(675),
+]
 var handlesObj = handlesObjArr[0]
-//var handlesObj = null
 
 const canvas = document.body.appendChild(document.createElement('canvas'))
 const regl = require('regl')({canvas: canvas})
@@ -169,6 +170,7 @@ var drawBunny = regl({
 
 
 function mydeform(offset) {
+
   if(!handlesObj)
     return
   var arr = []
@@ -211,6 +213,7 @@ function mydeform(offset) {
   positionBuffer.subdata(bunny.positions)
 }
 mydeform([+0.0, +0.0, 0.0])
+//positionBuffer.subdata(bunny.positions)
 
 
 
@@ -227,8 +230,6 @@ var projectionMatrix = mat4.perspective([],
                                         canvas.width / canvas.height,
                                         0.01,
                                         1000)
-
-var pickedHandle = -1
 
 const globalScope = regl({
   uniforms: {
@@ -282,7 +283,7 @@ const drawHandle = regl({
   void main() {
 
     //    gl_PointSize = 10.0;
-    gl_PointSize = 5.0;
+    gl_PointSize = 4.0;
 
     gl_Position = projection * view * vec4(
       position
@@ -494,16 +495,14 @@ regl.frame(({viewportWidth, viewportHeight}) => {
   globalScope( () => {
     drawBunny()
 
+    /*
     if(handlesObj != null) {
+
       for(var i = 0; i < handlesObj.handles.length; ++i) {
         //      if(i != 3) continue
         var handle = bunny.positions[handlesObj.handles[i]]
 
         var c = [0.0, 1.0, 0.0]
-
-        if(pickedHandle == i) {
-          c = [1.0, 0.0, 0.0]
-        }
 
         if(i == 0) { // 3
           c = [0.0, 0.0, 1.0]
@@ -511,6 +510,21 @@ regl.frame(({viewportWidth, viewportHeight}) => {
 
         drawHandle({pos: handle, color: c})
       }
+    }
+    */
+
+    for(var i = 0; i < handlesObjArr.length; ++i) {
+
+      var mh = handlesObjArr[i].mainHandle
+      var handle = bunny.positions[mh]
+
+      var c = [0.0, 1.0, 0.0]
+
+      if(handlesObjArr[i] == handlesObj)
+        var c = [1.0, 0.0, 0.0]
+
+      drawHandle({pos: handle, color: c})
+
     }
   })
 
