@@ -10,6 +10,7 @@
     "canvas-orbit-camera": "^1.0.2",
     "cholesky-solve": "^0.2.0",
     "conjugate-gradient": "0.0.2",
+    "control-panel": "^1.2.0",
     "csr-matrix": "~0.1.4",
     "cuthill-mckee": "^1.0.0",
     "gl-camera-pos-from-view-matrix": "^1.0.1",

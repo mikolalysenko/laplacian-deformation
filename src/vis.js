@@ -2,6 +2,8 @@ const normals = require('angle-normals')
 const mat4 = require('gl-mat4')
 const vec3 = require('gl-vec3')
 
+var control = require('control-panel')
+
 var bunny = require('bunny')
 const fit = require('canvas-fit')
 var ch = require('conway-hart')
@@ -11,6 +13,8 @@ var aabb = {
   min: [+1000, +1000, +1000],
   max: [-1000, -1000, -1000],
 }
+
+
 
 // find AABB for bunny.
 for(var j = 0; j < bunny.positions.length; ++j) {
@@ -136,9 +140,10 @@ var handlesObjArr = []
 
 
 var workItems = [
-  40, 675,
+  40,
 
-  850, 975, 156, 1523
+//  675,
+//  850, 975, 156, 1523
 
 ]
 var iWork = 0
@@ -148,7 +153,6 @@ var par = createParagraph('h3', '')
 function updateProgress(i) {
   par.innerHTML = "LOADING<br>Preparing handle " + i + "/" + workItems.length
 }
-
 
 function loop () {
 
@@ -160,6 +164,9 @@ function loop () {
     setTimeout(loop, 0)
 
   } else {
+    // clear text.
+    par.innerHTML = ""
+
     executeRest()
   }
 }
@@ -172,6 +179,27 @@ function executeRest() {
 
   const canvas = document.body.appendChild(document.createElement('canvas'))
   const regl = require('regl')({canvas: canvas})
+
+  var panel = control([
+  {type: 'button', label: 'Reset Mesh', action: function () {alert('hello!');}},
+],
+                    {theme: 'light', position: 'top-right'}
+                     )
+
+
+  var par = document.createElement("h3")
+  par.innerHTML = "Click near the handles and drag to deform the mesh"
+
+  var div = document.createElement('div')
+//  div.style.cssText = 'margin: 0 auto; max-width: 760px;'
+    div.style.cssText = 'color: #000; position: absolute; top: 0px; width: 100%; padding: 5px; z-index:100;'
+  div.style.fontSize = '10px'
+//  div.style.fontFamily = 'verdana'
+//  div.style.color = '#444444'
+  div.appendChild(par)
+  document.body.appendChild(div)
+
+
 
   const positionBuffer = regl.buffer({
     length: bunny.positions.length * 3 * 4,
@@ -611,14 +639,10 @@ function executeRest() {
       }
       prevPos = p
       prevMousePos = mousePos
-
-
       //
 
       //p - pr0
       //var def = vec3.subtract([], p, pr0)
-
-
     }
 
     if(movecamera) {
