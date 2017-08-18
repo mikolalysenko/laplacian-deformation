@@ -1,3 +1,20 @@
+/*
+
+Note from the author:
+
+This is very messy code. You should probably wait until I have cleaned it up, before you attempt reading it.
+You have been warned.
+
+
+
+
+
+
+
+
+*/
+
+
 const normals = require('angle-normals')
 const mat4 = require('gl-mat4')
 const vec3 = require('gl-vec3')
