@@ -186,19 +186,7 @@ function executeRest() {
   const regl = require('regl')({canvas: canvas})
 
 
-/*
-  var par = document.createElement("h3")
-  par.innerHTML = "Click near the handles and drag to deform the mesh"
 
-  var div = document.createElement('div')
-//  div.style.cssText = 'margin: 0 auto; max-width: 760px;'
-    div.style.cssText = 'color: #000; position: absolute; top: 0px; width: 100%; padding: 5px; z-index:100;'
-  div.style.fontSize = '10px'
-//  div.style.fontFamily = 'verdana'
-//  div.style.color = '#444444'
-  div.appendChild(par)
-  document.body.appendChild(div)
-*/
 
   var renderHandles = true
 
@@ -217,6 +205,20 @@ function executeRest() {
                      params = data
                    })
 
+
+
+
+  var par = document.createElement("h3")
+  par.innerHTML = "Click near the handles and drag to deform the mesh. <br>Hold \"Q\"-key, and drag the mouse, and/or scroll to change the view."
+
+  var div = document.createElement('div')
+//  div.style.cssText = 'margin: 0 auto; max-width: 760px;'
+    div.style.cssText = 'color: #000; position: absolute; bottom: 0px; width: 100%; padding: 5px; z-index:100;'
+  div.style.fontSize = '10px'
+//  div.style.fontFamily = 'verdana'
+//  div.style.color = '#444444'
+  div.appendChild(par)
+  document.body.appendChild(div)
 
 
   const positionBuffer = regl.buffer({
