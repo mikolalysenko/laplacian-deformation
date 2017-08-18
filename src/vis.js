@@ -140,7 +140,8 @@ var handlesObjArr = []
 
 
 var workItems = [
-  40,
+  //  40,
+
 
 //  675,
 //  850, 975, 156, 1523
@@ -153,7 +154,7 @@ var par = createParagraph('h3', '')
 function updateProgress(i) {
   par.innerHTML = "LOADING<br>Preparing handle " + i + "/" + workItems.length
 }
-
+/*
 function loop () {
 
   handlesObjArr.push(makeHandlesObj(workItems[iWork]))
@@ -173,9 +174,14 @@ function loop () {
 
 updateProgress(0)
 setTimeout(loop, 0)
+*/
+    executeRest()
+
 
 function executeRest() {
-  var handlesObj = handlesObjArr[0]
+//  var handlesObj = handlesObjArr[0]
+  var handlesObj = null
+
 
   const canvas = document.body.appendChild(document.createElement('canvas'))
   const regl = require('regl')({canvas: canvas})
@@ -213,21 +219,48 @@ function executeRest() {
     attribute vec3 position;
     attribute vec3 normal;
     varying vec3 vNormal;
+    varying vec3 vPosition;
+
     uniform mat4 view, projection;
     void main() {
       vNormal = normal;
+      vPosition = position;
+
       gl_Position = projection * view * vec4(position, 1);
     }`,
 
     frag: `
     precision mediump float;
     varying vec3 vNormal;
+    varying vec3 vPosition;
+    uniform vec3 uEyePos;
+
     void main() {
+
+      vec3 uLightDir = vec3(-0.69, 1.33, 0.57);
+      vec3 uAmbientLight = vec3(0.77, 0.72, 0.59);
+      vec3 uDiffuseColor = vec3(0.42, 0.34, 0.0);
+      vec3 uLightColor = vec3(0.40, 0.47, 0.0);
+      float uSpecularPower = 8.45;
+
+    vec3 n = vNormal;
+    vec3 l = normalize(uLightDir);
+    vec3 v = normalize(uEyePos - vPosition);
+    vec3 ambient = uAmbientLight * uDiffuseColor;
+    vec3 diffuse = uDiffuseColor * uLightColor * dot(n, l) ;
+    vec3 specular = pow(clamp(dot(normalize(l+v),n),0.0,1.0)  , uSpecularPower) * vec3(1.0,1.0,1.0);
+
+      gl_FragColor = vec4(ambient + diffuse + specular, 1.0);
+
+
+
+      /*
       vec3 color = vec3(0.8, 0.0, 0.0);
       vec3 lightDir = vec3(0.39, 0.87, 0.29);
       vec3 ambient = 0.5 * color;
       vec3 diffuse = 0.5 * color * clamp( dot(vNormal, lightDir), 0.0, 1.0 );
       gl_FragColor = vec4(ambient + diffuse, 1.0);
+      */
     }`,
 
     attributes: {
@@ -290,8 +323,8 @@ function executeRest() {
 
     positionBuffer.subdata(bunny.positions)
   }
-  mydeform([+0.0, +0.0, 0.0])
-  //positionBuffer.subdata(bunny.positions)
+//  mydeform([+0.0, +0.0, 0.0])
+  positionBuffer.subdata(bunny.positions)
 
 
 
@@ -314,7 +347,9 @@ function executeRest() {
       view: () => {
         return camera.view()
       },
-      projection: () => projectionMatrix
+      projection: () => projectionMatrix,
+
+      uEyePos: cameraPosFromViewMatrix([], camera.view())
 
     }
   })
