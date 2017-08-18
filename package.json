@@ -28,7 +28,8 @@
     "tape": "^4.7.0"
   },
   "scripts": {
-    "test": "tape test/*.js"
+    "test": "tape test/*.js",
+    "start": "budo --live --open src/vis.js"
   },
   "repository": {
     "type": "git",

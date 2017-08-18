@@ -145,10 +145,10 @@ var handlesObjArr = []
 var workItems = [
   40,
 
-/*
+
   675,
   850, 975, 156, 1523
-*/
+
 ]
 var iWork = 0
 
