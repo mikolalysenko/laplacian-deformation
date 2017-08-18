@@ -115,8 +115,9 @@ function makeHandlesObj(mainHandle) {
 
 //var handlesObj1 = makeHandlesObj(40)
 var handlesObjArr = [makeHandlesObj(40), makeHandlesObj(675)]
-
+//var handlesObjArr = []
 var handlesObj = handlesObjArr[0]
+//var handlesObj = null
 
 const canvas = document.body.appendChild(document.createElement('canvas'))
 const regl = require('regl')({canvas: canvas})
@@ -168,6 +169,8 @@ var drawBunny = regl({
 
 
 function mydeform(offset) {
+  if(!handlesObj)
+    return
   var arr = []
   for(var i = 0; i < handlesObj.handles.length; ++i) {
     arr[i] = []
@@ -209,7 +212,6 @@ function mydeform(offset) {
 }
 mydeform([+0.0, +0.0, 0.0])
 
-//ydeform([+0.2, +0.30, -0.14])
 
 
 const camera = require('canvas-orbit-camera')(canvas)
@@ -261,6 +263,8 @@ function getCameraRay() {
   // ray direction and origin
   var d = [v[0] - camPos[0], v[1] - camPos[1], v[2] - camPos[2]]
   var o = [camPos[0], camPos[1], camPos[2]]
+
+  vec3.normalize(d, d)
 
   return [d, o]
 }
@@ -322,6 +326,8 @@ window.onkeydown = function(e) {
 
   if (key == 81) {
     movecamera = true
+    isDragging = false
+
   }
 }
 
@@ -330,6 +336,7 @@ window.onkeyup = function(e) {
 
   if (key == 81) {
     movecamera = false
+
   }
 
   if (key == 49) {
@@ -359,6 +366,8 @@ window.onkeyup = function(e) {
   }
 }
 
+var prevPos = null
+var prevMousePos = null
 canvas.addEventListener('mousedown', mousedown, false)
 function mousedown() {
   /*
@@ -379,9 +388,90 @@ function mousedown() {
   */
 
 
+  //  isDragging = true
+//  return
 
   if(!movecamera) {
-    isDragging = true
+
+    var minDist = 1000000.0
+
+    var candidates = []
+
+    var ret = getCameraRay()
+    var d = ret[0]
+    var o = ret[1]
+
+    var minDist = 100000.0
+    var minI = -1
+
+    for(var i = 0; i < handlesObjArr.length; ++i) {
+      var ho = handlesObjArr[i]
+
+      var hp = bunny.positions[ho.mainHandle] // handle position
+/*
+      d = [1,2,3]
+      o = [4,5,6]
+
+      hp = [1,2,3]
+*/
+
+      var rp = vec3.subtract([], hp , o)
+      var rpmag = vec3.length(rp)
+  //    console.log("rpmag: ", rpmag)
+
+      var rplmag = Math.abs(vec3.dot(rp, d)) / vec3.length(d)
+
+      var dist = Math.sqrt(  rpmag*rpmag - rplmag*rplmag  )
+
+      /*
+      if(minI == -1) {
+        minDist = dist
+        minI = 0
+      } else if(dist < minDist) {
+        //        candidates.push(i)
+        minI = i
+        minDist = dist
+
+        }
+      */
+      if(dist < 0.2) {
+        candidates.push(i)
+      }
+    }
+//    handlesObj = handlesObjArr[minI]
+
+    if(candidates.length > 0) {
+      var minDist = 100000.0
+      var minI = -1
+      for(var j = 0; j < candidates.length; ++j) {
+        var i = candidates[j]
+        var ho = handlesObjArr[i]
+        var hp = bunny.positions[ho.mainHandle] // handle position
+
+        var dist = vec3.distance(hp, o)
+
+        if(minI == -1) {
+          minDist = dist
+          minI = i
+        } else if(dist < minDist) {
+          //        candidates.push(i)
+          minI = i
+          minDist = dist
+
+        }
+      }
+      handlesObj = handlesObjArr[minI]
+//      isDragging = true
+
+      isDragging = true
+
+      prevPos = null
+
+    } else {
+      handlesObj = null
+      isDragging = false
+    }
+
 
   }
 }
@@ -404,21 +494,23 @@ regl.frame(({viewportWidth, viewportHeight}) => {
   globalScope( () => {
     drawBunny()
 
-    for(var i = 0; i < handlesObj.handles.length; ++i) {
-      //      if(i != 3) continue
-      var handle = bunny.positions[handlesObj.handles[i]]
+    if(handlesObj != null) {
+      for(var i = 0; i < handlesObj.handles.length; ++i) {
+        //      if(i != 3) continue
+        var handle = bunny.positions[handlesObj.handles[i]]
 
-      var c = [0.0, 1.0, 0.0]
+        var c = [0.0, 1.0, 0.0]
 
-      if(pickedHandle == i) {
-        c = [1.0, 0.0, 0.0]
+        if(pickedHandle == i) {
+          c = [1.0, 0.0, 0.0]
+        }
+
+        if(i == 0) { // 3
+          c = [0.0, 0.0, 1.0]
+        }
+
+        drawHandle({pos: handle, color: c})
       }
-
-      if(i == 0) { // 3
-        c = [0.0, 0.0, 1.0]
-      }
-
-      drawHandle({pos: handle, color: c})
     }
   })
 
@@ -427,6 +519,8 @@ regl.frame(({viewportWidth, viewportHeight}) => {
     var ret = getCameraRay()
     var d = ret[0]
     var o = ret[1]
+
+    var mousePos = screenspaceMousePos()
 
 
     // plane point, and normal.
@@ -438,10 +532,46 @@ regl.frame(({viewportWidth, viewportHeight}) => {
     var t = (vec3.dot(pn, pr0) - vec3.dot(pn, o)) / vec3.dot(d, pn)
 
     var p = vec3.add([],  o,   vec3.scale([], d, t)   )
-    //p - pr0
-    var def = vec3.subtract([], p, pr0)
 
-    mydeform(def)
+//    console.log("p: ", p)
+
+
+
+    if(prevPos != null && prevMousePos != null) {
+
+      var diff = vec3.subtract([],
+
+                               [mousePos[0], mousePos[1], 0],
+                               [prevMousePos[0], prevMousePos[1], 0]
+
+                               )
+      console.log("mouediff:", diff)
+
+      if(vec3.length(diff) < 0.001) {
+
+      } else {
+
+
+        var def = vec3.subtract([], p, prevPos)
+
+
+///        if(vec3.length(def) > 0.001) {
+         // console.log(vec3.length(def))
+          mydeform(def)
+
+//        }
+      }
+
+    }
+    prevPos = p
+    prevMousePos = mousePos
+
+
+    //
+
+    //p - pr0
+    //var def = vec3.subtract([], p, pr0)
+
 
   }
 
