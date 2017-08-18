@@ -1,6 +1,8 @@
 laplacian deformation demo[WIP]
 =====================
 
+![](img/bunny.png)
+
 This is a demo that implements laplacian deformation in
 Javascript. Laplacian deformation is a technique that allows you to
 deform an arbitrary mesh as if it were a cloth-like material. In the
@@ -23,3 +25,7 @@ and they could not be used.
 We plan to further optimize our implementation, and turn it into a
 user-friendly module. Note that right now the code of the demo is
 rather messy, and not very readable. It will be cleaned up soon.
+
+# Video
+
+[![Result](http://img.youtube.com/vi/1bykYClXkRg/0.jpg)](https://www.youtube.com/watch?v=1bykYClXkRg)
