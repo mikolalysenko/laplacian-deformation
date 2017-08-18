@@ -237,30 +237,18 @@ function executeRest() {
 
     void main() {
 
-      vec3 uLightDir = vec3(-0.69, 1.33, 0.57);
-      vec3 uAmbientLight = vec3(0.77, 0.72, 0.59);
-      vec3 uDiffuseColor = vec3(0.42, 0.34, 0.0);
-      vec3 uLightColor = vec3(0.40, 0.47, 0.0);
-      float uSpecularPower = 8.45;
-
-    vec3 n = vNormal;
-    vec3 l = normalize(uLightDir);
-    vec3 v = normalize(uEyePos - vPosition);
-    vec3 ambient = uAmbientLight * uDiffuseColor;
-    vec3 diffuse = uDiffuseColor * uLightColor * dot(n, l) ;
-    vec3 specular = pow(clamp(dot(normalize(l+v),n),0.0,1.0)  , uSpecularPower) * vec3(1.0,1.0,1.0);
-
-      gl_FragColor = vec4(ambient + diffuse + specular, 1.0);
+    vec3 color = vec3(0.8, 0.0, 0.0);
+    vec3 ambient = 0.6 * color;
+      gl_FragColor = vec4(ambient +
 
 
+                          0.25 *color*clamp( dot(vNormal, vec3(0.39, 0.87, 0.29)), 0.0,1.0 )
+                          +
+                          0.25 *color*clamp( dot(vNormal, vec3(-0.39, 0.87, -0.29)), 0.0,1.0 )
 
-      /*
-      vec3 color = vec3(0.8, 0.0, 0.0);
-      vec3 lightDir = vec3(0.39, 0.87, 0.29);
-      vec3 ambient = 0.5 * color;
-      vec3 diffuse = 0.5 * color * clamp( dot(vNormal, lightDir), 0.0, 1.0 );
-      gl_FragColor = vec4(ambient + diffuse, 1.0);
-      */
+
+                          , 1.0);
+
     }`,
 
     attributes: {
