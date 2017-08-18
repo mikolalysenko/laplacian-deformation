@@ -5,16 +5,19 @@ const vec3 = require('gl-vec3')
 var control = require('control-panel')
 
 var bunny = require('bunny')
+
 const fit = require('canvas-fit')
 var ch = require('conway-hart')
 var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
+
+var sphereMesh = require('primitive-sphere')(1.0, {
+  segments: 16
+})
 
 var aabb = {
   min: [+1000, +1000, +1000],
   max: [-1000, -1000, -1000],
 }
-
-
 
 // find AABB for bunny.
 for(var j = 0; j < bunny.positions.length; ++j) {
@@ -140,7 +143,7 @@ var handlesObjArr = []
 
 
 var workItems = [
-  //  40,
+  40,
 
 
 //  675,
@@ -154,7 +157,7 @@ var par = createParagraph('h3', '')
 function updateProgress(i) {
   par.innerHTML = "LOADING<br>Preparing handle " + i + "/" + workItems.length
 }
-/*
+
 function loop () {
 
   handlesObjArr.push(makeHandlesObj(workItems[iWork]))
@@ -174,25 +177,16 @@ function loop () {
 
 updateProgress(0)
 setTimeout(loop, 0)
-*/
-    executeRest()
-
 
 function executeRest() {
-//  var handlesObj = handlesObjArr[0]
-  var handlesObj = null
+  var handlesObj = handlesObjArr[0]
 
 
   const canvas = document.body.appendChild(document.createElement('canvas'))
   const regl = require('regl')({canvas: canvas})
 
-  var panel = control([
-  {type: 'button', label: 'Reset Mesh', action: function () {alert('hello!');}},
-],
-                    {theme: 'light', position: 'top-right'}
-                     )
 
-
+/*
   var par = document.createElement("h3")
   par.innerHTML = "Click near the handles and drag to deform the mesh"
 
@@ -204,6 +198,24 @@ function executeRest() {
 //  div.style.color = '#444444'
   div.appendChild(par)
   document.body.appendChild(div)
+*/
+
+  var renderHandles = true
+
+  var panel = control([
+  {type: 'checkbox', label: 'render_handles', initial: renderHandles},
+    {type: 'button', label: 'Reset Mesh', action: function () {
+      bunny = JSON.parse(JSON.stringify(copyBunny))
+      var handlesObj = handlesObjArr[0]
+      mydeform([+0.0, +0.0, 0.0])
+    }},
+],
+                    {theme: 'light', position: 'top-right'}
+                     ).on('input', data => {
+                       renderHandles = data.render_handles
+//                     console.log("ratio: ", )
+                     params = data
+                   })
 
 
 
@@ -311,10 +323,7 @@ function executeRest() {
 
     positionBuffer.subdata(bunny.positions)
   }
-//  mydeform([+0.0, +0.0, 0.0])
-  positionBuffer.subdata(bunny.positions)
-
-
+  mydeform([+0.0, +0.0, 0.0])
 
   const camera = require('canvas-orbit-camera')(canvas)
   window.addEventListener('resize', fit(canvas), false)
@@ -374,23 +383,15 @@ function executeRest() {
   var isDragging = false
   var omp // original mouse pos
 
-
-
   const drawHandle = regl({
     vert: `
     precision mediump float;
     attribute vec3 position;
     uniform mat4 view, projection;
+    uniform vec3 pos;
+
     void main() {
-
-      //    gl_PointSize = 10.0;
-      gl_PointSize = 4.0;
-
-      gl_Position = projection * view * vec4(
-        position
-        // 0.0, 20.0, 0.0
-
-        , 1);
+      gl_Position = projection * view * vec4(position*0.015 + pos, 1);
     }`,
 
     frag: `
@@ -402,16 +403,18 @@ function executeRest() {
     }`,
 
     attributes: {
-      position: (_, props) => {
-        return props.pos
-      }
+      position: () => sphereMesh.positions,
     },
-    primitive: 'points',
-    count: 1,
+
+    elements: () => sphereMesh.cells,
+
 
     uniforms: {
       color: (_, props) => {
         return props.color
+      },
+      pos: (_, props) => {
+        return props.pos
       }
     }
   })
@@ -580,7 +583,6 @@ function executeRest() {
     globalScope( () => {
       drawBunny()
 
-
       // if(handlesObj != null) {
 
       //   for(var i = 0; i < handlesObj.handles.length; ++i) {
@@ -598,18 +600,20 @@ function executeRest() {
       // }
 
 
-      for(var i = 0; i < handlesObjArr.length; ++i) {
+      if(renderHandles) {
+        for(var i = 0; i < handlesObjArr.length; ++i) {
 
-        var mh = handlesObjArr[i].mainHandle
-        var handle = bunny.positions[mh]
+          var mh = handlesObjArr[i].mainHandle
+          var handle = bunny.positions[mh]
 
-        var c = [0.0, 1.0, 0.0]
+          var c = [0.0, 0.0, 1.0]
 
-        if(handlesObjArr[i] == handlesObj)
-          var c = [1.0, 0.0, 0.0]
+          if(handlesObjArr[i] == handlesObj)
+            var c = [0.0, 1.0, 0.0]
 
-        drawHandle({pos: handle, color: c})
+          drawHandle({pos: handle, color: c})
 
+        }
       }
     })
 
