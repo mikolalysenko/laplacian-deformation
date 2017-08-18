@@ -113,488 +113,521 @@ function makeHandlesObj(mainHandle) {
   return newHandlesObj
 }
 
+function createParagraph (elem, text) {
+  var par = document.createElement(elem)
+  par.innerHTML = text
+
+  var div = document.createElement('div')
+  div.style.cssText = 'margin: 0 auto; max-width: 760px;'
+  div.style.fontSize = '30px'
+  div.style.fontFamily = 'verdana'
+  div.style.color = '#444444'
+  div.appendChild(par)
+  document.body.appendChild(div)
+
+  return par
+}
+
+
+
 //var handlesObj1 = makeHandlesObj(40)
 // 850, 975, 156, 1523
-var handlesObjArr = [
-  makeHandlesObj(40), makeHandlesObj(675),
+var handlesObjArr = []
+
+
+var workItems = [
+  40, 675,
+
+  850, 975, 156, 1523
+
 ]
-var handlesObj = handlesObjArr[0]
+var iWork = 0
 
-const canvas = document.body.appendChild(document.createElement('canvas'))
-const regl = require('regl')({canvas: canvas})
+var par = createParagraph('h3', '')
 
-const positionBuffer = regl.buffer({
-  length: bunny.positions.length * 3 * 4,
-  type: 'float',
-  usage: 'dynamic'
-})
-
-var drawBunny = regl({
-  vert: `
-  precision mediump float;
-  attribute vec3 position;
-  attribute vec3 normal;
-  varying vec3 vNormal;
-  uniform mat4 view, projection;
-  void main() {
-    vNormal = normal;
-    gl_Position = projection * view * vec4(position, 1);
-  }`,
-
-  frag: `
-  precision mediump float;
-  varying vec3 vNormal;
-  void main() {
-    vec3 color = vec3(0.8, 0.0, 0.0);
-    vec3 lightDir = vec3(0.39, 0.87, 0.29);
-    vec3 ambient = 0.5 * color;
-    vec3 diffuse = 0.5 * color * clamp( dot(vNormal, lightDir), 0.0, 1.0 );
-    gl_FragColor = vec4(ambient + diffuse, 1.0);
-  }`,
-
-  attributes: {
-    position: {
-      buffer: positionBuffer,
-      normalized: true
-    },
-
-    //bunny.positions,
-    normal: normals(bunny.cells, bunny.positions)
-  },
-
-  elements: bunny.cells,
-  primitive: 'triangles'
-})
-
-
-
-
-function mydeform(offset) {
-
-  if(!handlesObj)
-    return
-  var arr = []
-  for(var i = 0; i < handlesObj.handles.length; ++i) {
-    arr[i] = []
-  }
-  //  offset = [+0.2, +0.30, -0.14]
-  var arr = []
-
-  for(var i = 0; i < handlesObj.handles.length; ++i) {
-    var hi = handlesObj.handles[i]
-
-    if(i < handlesObj.afterHandles
-
-      ) {
-      arr[i] = [
-        bunny.positions[hi][0] + offset[0],
-        bunny.positions[hi][1] + offset[1],
-        bunny.positions[hi][2] + offset[2]
-      ]
-
-    } else {
-      arr[i] = [
-        bunny.positions[hi][0],
-        bunny.positions[hi][1],
-        bunny.positions[hi][2]
-      ]
-    }
-  }
-
-  var d = handlesObj.calcMesh(arr)
-
-  for(var i = 0; i < bunny.positions.length; ++i) {
-    bunny.positions[i][0] = d[i*3 + 0]
-    bunny.positions[i][1] = d[i*3 + 1]
-    bunny.positions[i][2] = d[i*3 + 2]
-  }
-
-
-  positionBuffer.subdata(bunny.positions)
-}
-mydeform([+0.0, +0.0, 0.0])
-//positionBuffer.subdata(bunny.positions)
-
-
-
-const camera = require('canvas-orbit-camera')(canvas)
-window.addEventListener('resize', fit(canvas), false)
-
-camera.rotate([0.0, 0.0], [0.0, -0.4])
-camera.zoom(-30.0)
-//var mb = require('mouse-pressed')(canvas)
-var mp = require('mouse-position')(canvas)
-
-var projectionMatrix = mat4.perspective([],
-                                        Math.PI / 4,
-                                        canvas.width / canvas.height,
-                                        0.01,
-                                        1000)
-
-const globalScope = regl({
-  uniforms: {
-    view: () => {
-      return camera.view()
-    },
-    projection: () => projectionMatrix
-
-  }
-})
-
-function screenspaceMousePos() {
-  return [2.0 * mp[0] / canvas.width - 1.0, -2.0 * mp[1] / canvas.height + 1.0]
+function updateProgress(i) {
+  par.innerHTML = "LOADING<br>Preparing handle " + i + "/" + workItems.length
 }
 
-// get ray starting from camera position, heading in the viewing direction of the camera.
-function getCameraRay() {
-  var mousePos = screenspaceMousePos()
 
-  var view = camera.view()
-  var vp = []
-  mat4.multiply(vp, projectionMatrix, view)
+function loop () {
 
-  var inverseVp = []
-  mat4.invert(inverseVp, vp)
+  handlesObjArr.push(makeHandlesObj(workItems[iWork]))
+  ++iWork
+  updateProgress(iWork)
 
-  var v = []
-  vec3.transformMat4(v, [mousePos[0], mousePos[1], 0], inverseVp)
+  if(iWork < workItems.length) {
+    setTimeout(loop, 0)
 
-  var camPos = cameraPosFromViewMatrix([], view)
-
-  // ray direction and origin
-  var d = [v[0] - camPos[0], v[1] - camPos[1], v[2] - camPos[2]]
-  var o = [camPos[0], camPos[1], camPos[2]]
-
-  vec3.normalize(d, d)
-
-  return [d, o]
-}
-
-var isDragging = false
-var omp // original mouse pos
-
-
-
-const drawHandle = regl({
-  vert: `
-  precision mediump float;
-  attribute vec3 position;
-  uniform mat4 view, projection;
-  void main() {
-
-    //    gl_PointSize = 10.0;
-    gl_PointSize = 4.0;
-
-    gl_Position = projection * view * vec4(
-      position
-      // 0.0, 20.0, 0.0
-
-      , 1);
-  }`,
-
-  frag: `
-  precision mediump float;
-
-  uniform vec3 color;
-  void main() {
-    gl_FragColor = vec4(color, 1.0);
-  }`,
-
-  attributes: {
-    position: (_, props) => {
-      return props.pos
-    }
-  },
-  primitive: 'points',
-  count: 1,
-
-  uniforms: {
-    color: (_, props) => {
-      return props.color
-    }
-  }
-})
-
-function dist(a, b) {
-  return Math.sqrt(  (a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1])  )
-}
-
-var counter = 0
-var movecamera = false
-
-window.onkeydown = function(e) {
-  var key = e.keyCode ? e.keyCode : e.which;
-
-  if (key == 81) {
-    movecamera = true
-    isDragging = false
-
+  } else {
+    executeRest()
   }
 }
 
-window.onkeyup = function(e) {
-  var key = e.keyCode ? e.keyCode : e.which;
+updateProgress(0)
+setTimeout(loop, 0)
 
-  if (key == 81) {
-    movecamera = false
+function executeRest() {
+  var handlesObj = handlesObjArr[0]
 
-  }
+  const canvas = document.body.appendChild(document.createElement('canvas'))
+  const regl = require('regl')({canvas: canvas})
 
-  if (key == 49) {
-    handlesObj = handlesObjArr[0]
-    console.log("obj1")
-  } else if (key == 50) {
-    handlesObj = handlesObjArr[1]
-    console.log("obj2")
-  }
-
-  if (key == 82) {
-    if(counter==0) {
-      mydeform([+0.4, +0.0, -0.0])
-    } else if(counter==1) {
-      mydeform([-0.4, +0.0, -0.0])
-    }else if(counter==2) {
-      mydeform([+0.0, +0.4, -0.0])
-    }else if(counter==3) {
-      mydeform([+0.0, -0.4, -0.0])
-    }else if(counter==4) {
-      mydeform([+0.0, +0.0, +0.4])
-    }else if(counter==5) {
-      mydeform([+0.0, -0.0, -0.4])
-    }
-
-    counter++
-  }
-}
-
-var prevPos = null
-var prevMousePos = null
-canvas.addEventListener('mousedown', mousedown, false)
-function mousedown() {
-  /*
-    var viewMatrix = camera.view()
-    var vp = mat4.multiply([], projectionMatrix, viewMatrix)
-    var found = false
-    for(var i = 0; i < handlesPos.length; ++i) {
-    var hp = (vec3.transformMat4([], handlesPos[i], vp))
-
-    var d = dist(  mousePos, [hp[0], hp[1]] )
-
-    if(d < 0.1) {
-    pickedHandle = i
-    found = true
-    break
-    }
-    }
-  */
-
-
-  //  isDragging = true
-//  return
-
-  if(!movecamera) {
-
-    var minDist = 1000000.0
-
-    var candidates = []
-
-    var ret = getCameraRay()
-    var d = ret[0]
-    var o = ret[1]
-
-    var minDist = 100000.0
-    var minI = -1
-
-    for(var i = 0; i < handlesObjArr.length; ++i) {
-      var ho = handlesObjArr[i]
-
-      var hp = bunny.positions[ho.mainHandle] // handle position
-/*
-      d = [1,2,3]
-      o = [4,5,6]
-
-      hp = [1,2,3]
-*/
-
-      var rp = vec3.subtract([], hp , o)
-      var rpmag = vec3.length(rp)
-  //    console.log("rpmag: ", rpmag)
-
-      var rplmag = Math.abs(vec3.dot(rp, d)) / vec3.length(d)
-
-      var dist = Math.sqrt(  rpmag*rpmag - rplmag*rplmag  )
-
-      /*
-      if(minI == -1) {
-        minDist = dist
-        minI = 0
-      } else if(dist < minDist) {
-        //        candidates.push(i)
-        minI = i
-        minDist = dist
-
-        }
-      */
-      if(dist < 0.2) {
-        candidates.push(i)
-      }
-    }
-//    handlesObj = handlesObjArr[minI]
-
-    if(candidates.length > 0) {
-      var minDist = 100000.0
-      var minI = -1
-      for(var j = 0; j < candidates.length; ++j) {
-        var i = candidates[j]
-        var ho = handlesObjArr[i]
-        var hp = bunny.positions[ho.mainHandle] // handle position
-
-        var dist = vec3.distance(hp, o)
-
-        if(minI == -1) {
-          minDist = dist
-          minI = i
-        } else if(dist < minDist) {
-          //        candidates.push(i)
-          minI = i
-          minDist = dist
-
-        }
-      }
-      handlesObj = handlesObjArr[minI]
-//      isDragging = true
-
-      isDragging = true
-
-      prevPos = null
-
-    } else {
-      handlesObj = null
-      isDragging = false
-    }
-
-
-  }
-}
-
-canvas.addEventListener('mouseup', mouseup, false)
-function mouseup() {
-  var mousePos = screenspaceMousePos()
-
-  isDragging = false
-}
-
-camera.tick()
-
-regl.frame(({viewportWidth, viewportHeight}) => {
-  regl.clear({
-    depth: 1,
-    color: [1, 1, 1, 1]
+  const positionBuffer = regl.buffer({
+    length: bunny.positions.length * 3 * 4,
+    type: 'float',
+    usage: 'dynamic'
   })
 
-  globalScope( () => {
-    drawBunny()
+  var drawBunny = regl({
+    vert: `
+    precision mediump float;
+    attribute vec3 position;
+    attribute vec3 normal;
+    varying vec3 vNormal;
+    uniform mat4 view, projection;
+    void main() {
+      vNormal = normal;
+      gl_Position = projection * view * vec4(position, 1);
+    }`,
 
-    /*
-    if(handlesObj != null) {
+    frag: `
+    precision mediump float;
+    varying vec3 vNormal;
+    void main() {
+      vec3 color = vec3(0.8, 0.0, 0.0);
+      vec3 lightDir = vec3(0.39, 0.87, 0.29);
+      vec3 ambient = 0.5 * color;
+      vec3 diffuse = 0.5 * color * clamp( dot(vNormal, lightDir), 0.0, 1.0 );
+      gl_FragColor = vec4(ambient + diffuse, 1.0);
+    }`,
 
-      for(var i = 0; i < handlesObj.handles.length; ++i) {
-        //      if(i != 3) continue
-        var handle = bunny.positions[handlesObj.handles[i]]
+    attributes: {
+      position: {
+        buffer: positionBuffer,
+        normalized: true
+      },
+
+      //bunny.positions,
+      normal: normals(bunny.cells, bunny.positions)
+    },
+
+    elements: bunny.cells,
+    primitive: 'triangles'
+  })
+
+
+
+
+  function mydeform(offset) {
+
+    if(!handlesObj)
+      return
+    var arr = []
+    for(var i = 0; i < handlesObj.handles.length; ++i) {
+      arr[i] = []
+    }
+    //  offset = [+0.2, +0.30, -0.14]
+    var arr = []
+
+    for(var i = 0; i < handlesObj.handles.length; ++i) {
+      var hi = handlesObj.handles[i]
+
+      if(i < handlesObj.afterHandles
+
+        ) {
+        arr[i] = [
+          bunny.positions[hi][0] + offset[0],
+          bunny.positions[hi][1] + offset[1],
+          bunny.positions[hi][2] + offset[2]
+        ]
+
+      } else {
+        arr[i] = [
+          bunny.positions[hi][0],
+          bunny.positions[hi][1],
+          bunny.positions[hi][2]
+        ]
+      }
+    }
+
+    var d = handlesObj.calcMesh(arr)
+
+    for(var i = 0; i < bunny.positions.length; ++i) {
+      bunny.positions[i][0] = d[i*3 + 0]
+      bunny.positions[i][1] = d[i*3 + 1]
+      bunny.positions[i][2] = d[i*3 + 2]
+    }
+
+
+    positionBuffer.subdata(bunny.positions)
+  }
+  mydeform([+0.0, +0.0, 0.0])
+  //positionBuffer.subdata(bunny.positions)
+
+
+
+  const camera = require('canvas-orbit-camera')(canvas)
+  window.addEventListener('resize', fit(canvas), false)
+
+  camera.rotate([0.0, 0.0], [0.0, -0.4])
+  camera.zoom(-30.0)
+  //var mb = require('mouse-pressed')(canvas)
+  var mp = require('mouse-position')(canvas)
+
+  var projectionMatrix = mat4.perspective([],
+                                          Math.PI / 4,
+                                          canvas.width / canvas.height,
+                                          0.01,
+                                          1000)
+
+  const globalScope = regl({
+    uniforms: {
+      view: () => {
+        return camera.view()
+      },
+      projection: () => projectionMatrix
+
+    }
+  })
+
+  function screenspaceMousePos() {
+    return [2.0 * mp[0] / canvas.width - 1.0, -2.0 * mp[1] / canvas.height + 1.0]
+  }
+
+  // get ray starting from camera position, heading in the viewing direction of the camera.
+  function getCameraRay() {
+    var mousePos = screenspaceMousePos()
+
+    var view = camera.view()
+    var vp = []
+    mat4.multiply(vp, projectionMatrix, view)
+
+    var inverseVp = []
+    mat4.invert(inverseVp, vp)
+
+    var v = []
+    vec3.transformMat4(v, [mousePos[0], mousePos[1], 0], inverseVp)
+
+    var camPos = cameraPosFromViewMatrix([], view)
+
+    // ray direction and origin
+    var d = [v[0] - camPos[0], v[1] - camPos[1], v[2] - camPos[2]]
+    var o = [camPos[0], camPos[1], camPos[2]]
+
+    vec3.normalize(d, d)
+
+    return [d, o]
+  }
+
+  var isDragging = false
+  var omp // original mouse pos
+
+
+
+  const drawHandle = regl({
+    vert: `
+    precision mediump float;
+    attribute vec3 position;
+    uniform mat4 view, projection;
+    void main() {
+
+      //    gl_PointSize = 10.0;
+      gl_PointSize = 4.0;
+
+      gl_Position = projection * view * vec4(
+        position
+        // 0.0, 20.0, 0.0
+
+        , 1);
+    }`,
+
+    frag: `
+    precision mediump float;
+
+    uniform vec3 color;
+    void main() {
+      gl_FragColor = vec4(color, 1.0);
+    }`,
+
+    attributes: {
+      position: (_, props) => {
+        return props.pos
+      }
+    },
+    primitive: 'points',
+    count: 1,
+
+    uniforms: {
+      color: (_, props) => {
+        return props.color
+      }
+    }
+  })
+
+  function dist(a, b) {
+    return Math.sqrt(  (a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1])  )
+  }
+
+  var counter = 0
+  var movecamera = false
+
+  window.onkeydown = function(e) {
+    var key = e.keyCode ? e.keyCode : e.which;
+
+    if (key == 81) {
+      movecamera = true
+      isDragging = false
+
+    }
+  }
+
+  window.onkeyup = function(e) {
+    var key = e.keyCode ? e.keyCode : e.which;
+
+    if (key == 81) {
+      movecamera = false
+
+    }
+
+    if (key == 49) {
+      handlesObj = handlesObjArr[0]
+      console.log("obj1")
+    } else if (key == 50) {
+      handlesObj = handlesObjArr[1]
+      console.log("obj2")
+    }
+
+    if (key == 82) {
+      if(counter==0) {
+        mydeform([+0.4, +0.0, -0.0])
+      } else if(counter==1) {
+        mydeform([-0.4, +0.0, -0.0])
+      }else if(counter==2) {
+        mydeform([+0.0, +0.4, -0.0])
+      }else if(counter==3) {
+        mydeform([+0.0, -0.4, -0.0])
+      }else if(counter==4) {
+        mydeform([+0.0, +0.0, +0.4])
+      }else if(counter==5) {
+        mydeform([+0.0, -0.0, -0.4])
+      }
+
+      counter++
+    }
+  }
+
+  var prevPos = null
+  var prevMousePos = null
+  canvas.addEventListener('mousedown', mousedown, false)
+  function mousedown() {
+
+    // var viewMatrix = camera.view()
+    // var vp = mat4.multiply([], projectionMatrix, viewMatrix)
+    // var found = false
+    // for(var i = 0; i < handlesPos.length; ++i) {
+    // var hp = (vec3.transformMat4([], handlesPos[i], vp))
+
+    // var d = dist(  mousePos, [hp[0], hp[1]] )
+
+    // if(d < 0.1) {
+    // pickedHandle = i
+    // found = true
+    // break
+    // }
+    // }
+
+
+
+    //  isDragging = true
+    //  return
+
+    if(!movecamera) {
+
+      var minDist = 1000000.0
+
+      var candidates = []
+
+      var ret = getCameraRay()
+      var d = ret[0]
+      var o = ret[1]
+
+      var minDist = 100000.0
+      var minI = -1
+
+      for(var i = 0; i < handlesObjArr.length; ++i) {
+        var ho = handlesObjArr[i]
+
+        var hp = bunny.positions[ho.mainHandle] // handle position
+
+        var rp = vec3.subtract([], hp , o)
+        var rpmag = vec3.length(rp)
+        //    console.log("rpmag: ", rpmag)
+
+        var rplmag = Math.abs(vec3.dot(rp, d)) / vec3.length(d)
+
+        var dist = Math.sqrt(  rpmag*rpmag - rplmag*rplmag  )
+
+
+        if(dist < 0.2) {
+          candidates.push(i)
+        }
+      }
+      //    handlesObj = handlesObjArr[minI]
+
+      if(candidates.length > 0) {
+        var minDist = 100000.0
+        var minI = -1
+        for(var j = 0; j < candidates.length; ++j) {
+          var i = candidates[j]
+          var ho = handlesObjArr[i]
+          var hp = bunny.positions[ho.mainHandle] // handle position
+
+          var dist = vec3.distance(hp, o)
+
+          if(minI == -1) {
+            minDist = dist
+            minI = i
+          } else if(dist < minDist) {
+            //        candidates.push(i)
+            minI = i
+            minDist = dist
+
+          }
+        }
+        handlesObj = handlesObjArr[minI]
+        //      isDragging = true
+
+        isDragging = true
+
+        prevPos = null
+
+      } else {
+        handlesObj = null
+        isDragging = false
+      }
+
+
+    }
+  }
+
+  canvas.addEventListener('mouseup', mouseup, false)
+  function mouseup() {
+    var mousePos = screenspaceMousePos()
+
+    isDragging = false
+  }
+
+  camera.tick()
+
+  regl.frame(({viewportWidth, viewportHeight}) => {
+    regl.clear({
+      depth: 1,
+      color: [1, 1, 1, 1]
+    })
+
+    globalScope( () => {
+      drawBunny()
+
+
+      // if(handlesObj != null) {
+
+      //   for(var i = 0; i < handlesObj.handles.length; ++i) {
+      //     //      if(i != 3) continue
+      //     var handle = bunny.positions[handlesObj.handles[i]]
+
+      //     var c = [0.0, 1.0, 0.0]
+
+      //     if(i == 0) { // 3
+      //       c = [0.0, 0.0, 1.0]
+      //     }
+
+      //     drawHandle({pos: handle, color: c})
+      //   }
+      // }
+
+
+      for(var i = 0; i < handlesObjArr.length; ++i) {
+
+        var mh = handlesObjArr[i].mainHandle
+        var handle = bunny.positions[mh]
 
         var c = [0.0, 1.0, 0.0]
 
-        if(i == 0) { // 3
-          c = [0.0, 0.0, 1.0]
-        }
+        if(handlesObjArr[i] == handlesObj)
+          var c = [1.0, 0.0, 0.0]
 
         drawHandle({pos: handle, color: c})
+
       }
-    }
-    */
+    })
 
-    for(var i = 0; i < handlesObjArr.length; ++i) {
+    if(isDragging) {
 
-      var mh = handlesObjArr[i].mainHandle
-      var handle = bunny.positions[mh]
+      var ret = getCameraRay()
+      var d = ret[0]
+      var o = ret[1]
 
-      var c = [0.0, 1.0, 0.0]
-
-      if(handlesObjArr[i] == handlesObj)
-        var c = [1.0, 0.0, 0.0]
-
-      drawHandle({pos: handle, color: c})
-
-    }
-  })
-
-  if(isDragging) {
-
-    var ret = getCameraRay()
-    var d = ret[0]
-    var o = ret[1]
-
-    var mousePos = screenspaceMousePos()
+      var mousePos = screenspaceMousePos()
 
 
-    // plane point, and normal.
-    var pr0 = bunny.positions[handlesObj.handles[0]]
-    var pn = [o[0] - pr0[0], o[1] - pr0[1], o[2] - pr0[2]]
+      // plane point, and normal.
+      var pr0 = bunny.positions[handlesObj.handles[0]]
+      var pn = [o[0] - pr0[0], o[1] - pr0[1], o[2] - pr0[2]]
 
-    vec3.normalize(pn, pn)
+      vec3.normalize(pn, pn)
 
-    var t = (vec3.dot(pn, pr0) - vec3.dot(pn, o)) / vec3.dot(d, pn)
+      var t = (vec3.dot(pn, pr0) - vec3.dot(pn, o)) / vec3.dot(d, pn)
 
-    var p = vec3.add([],  o,   vec3.scale([], d, t)   )
+      var p = vec3.add([],  o,   vec3.scale([], d, t)   )
 
-//    console.log("p: ", p)
+      //    console.log("p: ", p)
 
 
 
-    if(prevPos != null && prevMousePos != null) {
+      if(prevPos != null && prevMousePos != null) {
 
-      var diff = vec3.subtract([],
+        var diff = vec3.subtract([],
 
-                               [mousePos[0], mousePos[1], 0],
-                               [prevMousePos[0], prevMousePos[1], 0]
+                                 [mousePos[0], mousePos[1], 0],
+                                 [prevMousePos[0], prevMousePos[1], 0]
 
-                               )
-      console.log("mouediff:", diff)
+                                )
+        if(vec3.length(diff) < 0.001) {
 
-      if(vec3.length(diff) < 0.001) {
-
-      } else {
+        } else {
 
 
-        var def = vec3.subtract([], p, prevPos)
+          var def = vec3.subtract([], p, prevPos)
 
 
-///        if(vec3.length(def) > 0.001) {
-         // console.log(vec3.length(def))
+          ///        if(vec3.length(def) > 0.001) {
+          // console.log(vec3.length(def))
           mydeform(def)
 
-//        }
+          //        }
+        }
+
       }
+      prevPos = p
+      prevMousePos = mousePos
+
+
+      //
+
+      //p - pr0
+      //var def = vec3.subtract([], p, pr0)
+
 
     }
-    prevPos = p
-    prevMousePos = mousePos
 
+    if(movecamera) {
+      camera.tick()
+    }
 
-    //
+  })
 
-    //p - pr0
-    //var def = vec3.subtract([], p, pr0)
-
-
-  }
-
-  if(movecamera) {
-    camera.tick()
-  }
-
-})
-
-// all way left is -1= x.
-// all way left is +1= x
-// all way down is -1= y
+  // all way left is -1= x.
+  // all way left is +1= x
+  // all way down is -1= y
+}
