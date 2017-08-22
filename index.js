@@ -3,6 +3,7 @@ var cmprecond = require('cuthill-mckee')
 var ldl = require('cholesky-solve').prepare
 var calcLaplacian = require('./src/laplacian')
 var csrgemtm = require('./src/csrgemtm')
+var qrSolve = require('qr-solve')
 
 function transpose (positions) {
   var x = new Float64Array(positions.length)
