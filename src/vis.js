@@ -1,75 +1,56 @@
-/*
-
-Note from the author:
-
-This is very messy code. You should probably wait until I have cleaned it up, before you attempt reading it.
-You have been warned.
-
-
-
-
-
-
-
-
-*/
-
-
 const normals = require('angle-normals')
 const mat4 = require('gl-mat4')
 const vec3 = require('gl-vec3')
-
 var control = require('control-panel')
-
 var bunny = require('bunny')
-
 const fit = require('canvas-fit')
 var ch = require('conway-hart')
 var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
-
-var sphereMesh = require('primitive-sphere')(1.0, {
-  segments: 16
-})
+var sphereMesh = require('primitive-sphere')(1.0, { segments: 16 })
+var prepareDeform = require('../index')
 
 var aabb = {
   min: [+1000, +1000, +1000],
   max: [-1000, -1000, -1000],
 }
 
-// find AABB for bunny.
+/*
+  Find AABB for mesh.
+*/
 for(var j = 0; j < bunny.positions.length; ++j) {
-
   var p = bunny.positions[j]
 
   for(var i = 0; i < 3; ++i) {
-
     if(p[i] < aabb.min[i]) {
       aabb.min[i] = p[i]
     }
-
     if(p[i] > aabb.max[i]) {
       aabb.max[i] = p[i]
     }
   }
 }
 
-// center translation
+// find longest side of AABB.
+var il = 0
+for(var i = 1; i < 3; ++i) {
+  if( (aabb.max[i]-aabb.min[i]) > aabb.max[il]-aabb.min[il]) {
+    il = i
+  }
+}
+
+/*
+  Now that we have the AABB, we can use that info to the center the mesh,
+  and scale it so that it fits in the unit cube.
+
+  We do all those things for the purpose of normalizing the mesh, so
+  that it is fully visible to the camera.
+*/
+var s = 1.0 / (aabb.max[il]-aabb.min[il])
 var t = [
     -0.5 * (aabb.min[0] + aabb.max[0]),
     -0.5 * (aabb.min[1] + aabb.max[1]),
     -0.5 * (aabb.min[2] + aabb.max[2]),
 ]
-
-// i longest.
-var il = 0
-
-for(var i = 1; i < 3; ++i) {
-
-  if( (aabb.max[i]-aabb.min[i]) >  aabb.max[il]-aabb.min[il] )   {
-    il = i
-  }
-}
-var s = 1.0 / (aabb.max[il]-aabb.min[il])
 
 for(var j = 0; j < bunny.positions.length; ++j) {
 
@@ -84,8 +65,8 @@ for(var j = 0; j < bunny.positions.length; ++j) {
   p[2] *= s
 }
 
+// copy of the mesh, that we use when restoring the mesh.
 var copyBunny = JSON.parse(JSON.stringify(bunny))
-var deform = require('../index')
 
 function dist(u, v) {
   var dx = u[0] - v[0]
@@ -95,6 +76,9 @@ function dist(u, v) {
   return Math.sqrt(dx*dx + dy*dy + dz*dz)
 }
 
+// make an object that can be used to deform a section of the mesh.
+// The function will deform the vertex with index mainHandle, and
+// vertices that are close enough it.
 function makeHandlesObj(mainHandle) {
   var newHandlesObj = {
     handles: []
@@ -102,6 +86,8 @@ function makeHandlesObj(mainHandle) {
 
   newHandlesObj.handles.push(mainHandle)
 
+  // add all vertices that are close enough to main handle.
+  // these vertices are deformed together with the main handle.
   for(var j = 0; j < bunny.positions.length; ++j) {
     var p = bunny.positions[j]
     var accept = false
@@ -114,8 +100,12 @@ function makeHandlesObj(mainHandle) {
     }
   }
 
-  newHandlesObj.afterHandles = newHandlesObj.handles.length
+  // now we begin adding some more handles.
+  // These handles will NOT be moved during deformation.
+  // Their positions are kept constant, and so they serve as
+  //n anchors that ensures that the mesh keeps it general shape.
 
+  newHandlesObj.afterHandles = newHandlesObj.handles.length
   for(var j = 0; j < bunny.positions.length; ++j) {
     var p = bunny.positions[j]
     var accept = true
@@ -131,9 +121,8 @@ function makeHandlesObj(mainHandle) {
     }
   }
 
-  newHandlesObj.calcMesh = deform(bunny.cells, bunny.positions, newHandlesObj.handles)
+  newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj.handles)
   newHandlesObj.mainHandle = mainHandle
-  //console.log(handles[4])
   return newHandlesObj
 }
 
@@ -152,24 +141,17 @@ function createParagraph (elem, text) {
   return par
 }
 
-
-
-//var handlesObj1 = makeHandlesObj(40)
-// 850, 975, 156, 1523
 var handlesObjArr = []
 
 
 var workItems = [
   40,
-
-
   // 675,
   // 850, 975, 156, 1523
-
-
 ]
 var iWork = 0
 
+// loading string.
 var par = createParagraph('h3', '')
 
 function updateProgress(i) {
@@ -189,42 +171,47 @@ function loop () {
     // clear text.
     par.innerHTML = ""
 
+    // loading done, now do the rest.
     executeRest()
   }
 }
 
 updateProgress(0)
+// use timeout to do loading, so that the loading string is properly updated.
 setTimeout(loop, 0)
 
 function executeRest() {
+  // set current handle that we're manipulating.
   var handlesObj = handlesObjArr[0]
   const canvas = document.body.appendChild(document.createElement('canvas'))
   const regl = require('regl')({canvas: canvas})
 
   var str = `<a href="https://github.com/mikolalysenko/laplacian-deformation"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/82b228a3648bf44fc1163ef44c62fcc60081495e/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_red_aa0000.png"></a>`
 
-var container = document.createElement('div')
-container.innerHTML = str
-document.body.appendChild(container)
 
+      /*
+        Create GUI
 
+      */
+
+  var container = document.createElement('div')
+  container.innerHTML = str
+  document.body.appendChild(container)
 
   var renderHandles = true
-
   var panel = control([
-  {type: 'checkbox', label: 'render_handles', initial: renderHandles},
+    {type: 'checkbox', label: 'render_handles', initial: renderHandles},
     {type: 'button', label: 'Reset Mesh', action: function () {
       bunny = JSON.parse(JSON.stringify(copyBunny))
       var handlesObj = handlesObjArr[0]
-      mydeform([+0.0, +0.0, 0.0])
+      doDeform([+0.0, +0.0, 0.0])
     }},
-],
-                    {theme: 'light', position: 'top-right'}
+  ],
+                      {theme: 'light', position: 'top-right'}
                      ).on('input', data => {
                        renderHandles = data.render_handles
-//                     console.log("ratio: ", )
-                     params = data
-                   })
+                       params = data
+                     })
 
 
 
@@ -233,21 +220,20 @@ document.body.appendChild(container)
   par.innerHTML = "Click near the handles and drag to deform the mesh. <br>Hold \"Q\"-key, and drag the mouse, and/or scroll to change the view."
 
   var div = document.createElement('div')
-//  div.style.cssText = 'margin: 0 auto; max-width: 760px;'
-    div.style.cssText = 'color: #000; position: absolute; bottom: 0px; width: 100%; padding: 5px; z-index:100;'
+  div.style.cssText = 'color: #000; position: absolute; bottom: 0px; width: 100%; padding: 5px; z-index:100;'
   div.style.fontSize = '10px'
-//  div.style.fontFamily = 'verdana'
-//  div.style.color = '#444444'
   div.appendChild(par)
   document.body.appendChild(div)
 
 
+  /*
+    Create command for drawing bunny.
+  */
   const positionBuffer = regl.buffer({
     length: bunny.positions.length * 3 * 4,
     type: 'float',
     usage: 'dynamic'
   })
-
   var drawBunny = regl({
     vert: `
     precision mediump float;
@@ -272,11 +258,9 @@ document.body.appendChild(container)
 
     void main() {
 
-    vec3 color = vec3(0.8, 0.0, 0.0);
-    vec3 ambient = 0.6 * color;
+      vec3 color = vec3(0.8, 0.0, 0.0);
+      vec3 ambient = 0.6 * color;
       gl_FragColor = vec4(ambient +
-
-
                           0.25 *color*clamp( dot(vNormal, vec3(0.39, 0.87, 0.29)), 0.0,1.0 )
                           +
                           0.25 *color*clamp( dot(vNormal, vec3(-0.39, 0.87, -0.29)), 0.0,1.0 )
@@ -292,7 +276,6 @@ document.body.appendChild(container)
         normalized: true
       },
 
-      //bunny.positions,
       normal: normals(bunny.cells, bunny.positions)
     },
 
@@ -300,10 +283,8 @@ document.body.appendChild(container)
     primitive: 'triangles'
   })
 
-
-
-
-  function mydeform(offset) {
+  // function for deforming the current handle.
+  function doDeform(offset) {
 
     if(!handlesObj)
       return
@@ -311,14 +292,13 @@ document.body.appendChild(container)
     for(var i = 0; i < handlesObj.handles.length; ++i) {
       arr[i] = []
     }
-    //  offset = [+0.2, +0.30, -0.14]
     var arr = []
 
     for(var i = 0; i < handlesObj.handles.length; ++i) {
       var hi = handlesObj.handles[i]
 
+      // these handles are deformed.
       if(i < handlesObj.afterHandles
-
         ) {
         arr[i] = [
           bunny.positions[hi][0] + offset[0],
@@ -326,6 +306,8 @@ document.body.appendChild(container)
           bunny.positions[hi][2] + offset[2]
         ]
 
+        // and these ones are not moved at all.
+        // they serve as anchors, that nail down the mesh.
       } else {
         arr[i] = [
           bunny.positions[hi][0],
@@ -335,27 +317,29 @@ document.body.appendChild(container)
       }
     }
 
-    var d = handlesObj.calcMesh(arr)
+    // deform.
+    var d = handlesObj.doDeform(arr)
 
+    // now assign the deformed vertices to the mesh.
     for(var i = 0; i < bunny.positions.length; ++i) {
       bunny.positions[i][0] = d[i*3 + 0]
       bunny.positions[i][1] = d[i*3 + 1]
       bunny.positions[i][2] = d[i*3 + 2]
     }
 
-
     positionBuffer.subdata(bunny.positions)
   }
-  mydeform([+0.0, +0.0, 0.0])
+  doDeform([+0.0, +0.0, 0.0])
 
+  /*
+    Setup camera.
+  */
   const camera = require('canvas-orbit-camera')(canvas)
   window.addEventListener('resize', fit(canvas), false)
-
   camera.rotate([0.0, 0.0], [0.0, -0.4])
   camera.zoom(-30.0)
   //var mb = require('mouse-pressed')(canvas)
   var mp = require('mouse-position')(canvas)
-
   var projectionMatrix = mat4.perspective([],
                                           Math.PI / 4,
                                           canvas.width / canvas.height,
@@ -394,18 +378,17 @@ document.body.appendChild(container)
 
     var camPos = cameraPosFromViewMatrix([], view)
 
-    // ray direction and origin
     var d = [v[0] - camPos[0], v[1] - camPos[1], v[2] - camPos[2]]
     var o = [camPos[0], camPos[1], camPos[2]]
 
     vec3.normalize(d, d)
 
-    return [d, o]
+    return [d, o] // ray direction, ray origin.
   }
 
   var isDragging = false
-  var omp // original mouse pos
 
+  // draws a handle as a sphere.
   const drawHandle = regl({
     vert: `
     precision mediump float;
@@ -431,7 +414,6 @@ document.body.appendChild(container)
 
     elements: () => sphereMesh.cells,
 
-
     uniforms: {
       color: (_, props) => {
         return props.color
@@ -446,7 +428,6 @@ document.body.appendChild(container)
     return Math.sqrt(  (a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1])  )
   }
 
-  var counter = 0
   var movecamera = false
 
   window.onkeydown = function(e) {
@@ -464,61 +445,17 @@ document.body.appendChild(container)
 
     if (key == 81) {
       movecamera = false
-
-    }
-
-    if (key == 49) {
-      handlesObj = handlesObjArr[0]
-      console.log("obj1")
-    } else if (key == 50) {
-      handlesObj = handlesObjArr[1]
-      console.log("obj2")
-    }
-
-    if (key == 82) {
-      if(counter==0) {
-        mydeform([+0.4, +0.0, -0.0])
-      } else if(counter==1) {
-        mydeform([-0.4, +0.0, -0.0])
-      }else if(counter==2) {
-        mydeform([+0.0, +0.4, -0.0])
-      }else if(counter==3) {
-        mydeform([+0.0, -0.4, -0.0])
-      }else if(counter==4) {
-        mydeform([+0.0, +0.0, +0.4])
-      }else if(counter==5) {
-        mydeform([+0.0, -0.0, -0.4])
-      }
-
-      counter++
     }
   }
 
   var prevPos = null
   var prevMousePos = null
   canvas.addEventListener('mousedown', mousedown, false)
+
+  /*
+    When clicking mouse, pick handle that is near enough to mouse, and closest to the camera.
+  */
   function mousedown() {
-
-    // var viewMatrix = camera.view()
-    // var vp = mat4.multiply([], projectionMatrix, viewMatrix)
-    // var found = false
-    // for(var i = 0; i < handlesPos.length; ++i) {
-    // var hp = (vec3.transformMat4([], handlesPos[i], vp))
-
-    // var d = dist(  mousePos, [hp[0], hp[1]] )
-
-    // if(d < 0.1) {
-    // pickedHandle = i
-    // found = true
-    // break
-    // }
-    // }
-
-
-
-    //  isDragging = true
-    //  return
-
     if(!movecamera) {
 
       var minDist = 1000000.0
@@ -539,7 +476,6 @@ document.body.appendChild(container)
 
         var rp = vec3.subtract([], hp , o)
         var rpmag = vec3.length(rp)
-        //    console.log("rpmag: ", rpmag)
 
         var rplmag = Math.abs(vec3.dot(rp, d)) / vec3.length(d)
 
@@ -573,12 +509,8 @@ document.body.appendChild(container)
           }
         }
         handlesObj = handlesObjArr[minI]
-        //      isDragging = true
-
         isDragging = true
-
         prevPos = null
-
       } else {
         handlesObj = null
         isDragging = false
@@ -623,6 +555,7 @@ document.body.appendChild(container)
       // }
 
 
+      // render handles
       if(renderHandles) {
         for(var i = 0; i < handlesObjArr.length; ++i) {
 
@@ -640,14 +573,15 @@ document.body.appendChild(container)
       }
     })
 
+    // if the mouse is moved while left mouse-button is down,
+    // the main handle should follow the mouse.
+    // the below calculations ensure this.
     if(isDragging) {
-
       var ret = getCameraRay()
       var d = ret[0]
       var o = ret[1]
 
       var mousePos = screenspaceMousePos()
-
 
       // plane point, and normal.
       var pr0 = bunny.positions[handlesObj.handles[0]]
@@ -657,42 +591,25 @@ document.body.appendChild(container)
 
       var t = (vec3.dot(pn, pr0) - vec3.dot(pn, o)) / vec3.dot(d, pn)
 
-      var p = vec3.add([],  o,   vec3.scale([], d, t)   )
-
-      //    console.log("p: ", p)
-
-
+      var p = vec3.add([], o, vec3.scale([], d, t))
 
       if(prevPos != null && prevMousePos != null) {
 
         var diff = vec3.subtract([],
-
                                  [mousePos[0], mousePos[1], 0],
-                                 [prevMousePos[0], prevMousePos[1], 0]
-
-                                )
+                                 [prevMousePos[0], prevMousePos[1], 0])
         if(vec3.length(diff) < 0.001) {
 
         } else {
 
-
           var def = vec3.subtract([], p, prevPos)
 
-
-          ///        if(vec3.length(def) > 0.001) {
-          // console.log(vec3.length(def))
-          mydeform(def)
-
-          //        }
+          doDeform(def)
         }
 
       }
       prevPos = p
       prevMousePos = mousePos
-      //
-
-      //p - pr0
-      //var def = vec3.subtract([], p, pr0)
     }
 
     if(movecamera) {
@@ -700,8 +617,4 @@ document.body.appendChild(container)
     }
 
   })
-
-  // all way left is -1= x.
-  // all way left is +1= x
-  // all way down is -1= y
 }
