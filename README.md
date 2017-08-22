@@ -1,6 +1,8 @@
 laplacian deformation demo[WIP]
 =====================
 
+[CLICK HERE FOR DEMO](https://mikolalysenko.github.io/laplacian-deformation/demo.html)
+
 ![](img/bunny.png)
 
 This is a demo that implements laplacian deformation in
