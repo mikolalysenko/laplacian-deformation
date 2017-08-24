@@ -86,6 +86,7 @@ function makeHandlesObj(mainHandle) {
 
   newHandlesObj.handles.push(mainHandle)
 
+  /*
   // add all vertices that are close enough to main handle.
   // these vertices are deformed together with the main handle.
   for(var j = 0; j < bunny.positions.length; ++j) {
@@ -99,7 +100,7 @@ function makeHandlesObj(mainHandle) {
       newHandlesObj.handles.push(j)
     }
   }
-
+*/
   // now we begin adding some more handles.
   // These handles will NOT be moved during deformation.
   // Their positions are kept constant, and so they serve as
@@ -330,6 +331,7 @@ function executeRest() {
     positionBuffer.subdata(bunny.positions)
   }
   doDeform([+0.0, +0.0, 0.0])
+//    positionBuffer.subdata(bunny.positions)
 
   /*
     Setup camera.
@@ -538,22 +540,24 @@ function executeRest() {
     globalScope( () => {
       drawBunny()
 
-      // if(handlesObj != null) {
+      if(handlesObj != null) {
 
-      //   for(var i = 0; i < handlesObj.handles.length; ++i) {
-      //     //      if(i != 3) continue
-      //     var handle = bunny.positions[handlesObj.handles[i]]
+        for(var i = 0; i < handlesObj.handles.length; ++i) {
+          //      if(i != 3) continue
+          var handle = bunny.positions[handlesObj.handles[i]]
 
-      //     var c = [0.0, 1.0, 0.0]
+          var c = [0.0, 1.0, 0.0]
 
-      //     if(i == 0) { // 3
-      //       c = [0.0, 0.0, 1.0]
-      //     }
+          if(i == 0) { // 3
+            c = [0.0, 0.0, 1.0]
+          }
 
-      //     drawHandle({pos: handle, color: c})
-      //   }
-      // }
+          drawHandle({pos: handle, color: c})
+        }
+      }
 
+
+      /*
 
       // render handles
       if(renderHandles) {
@@ -571,6 +575,7 @@ function executeRest() {
 
         }
       }
+      */
     })
 
     // if the mouse is moved while left mouse-button is down,

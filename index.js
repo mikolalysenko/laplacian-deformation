@@ -21,8 +21,12 @@ function transpose (positions) {
 module.exports = function (cells, positions, handleIds) {
   var N = positions.length
   var M = N + handleIds.length
-  var coeffs = calcLaplacian(cells, positions)
+
+  var trace = new Float64Array(N)
+
+  var coeffs = calcLaplacian(cells, trace)
   var lapMat = CSRMatrix.fromList(coeffs, N, N)
+
 
   // calculate position derivatives
   var tpositions = transpose(positions)
@@ -41,8 +45,6 @@ module.exports = function (cells, positions, handleIds) {
   /*
   // calculate square matrix
 //  var mmt = csrgemtm(augMat, augMat)
-
-
   // calculate preconditioner
   var pi = cmprecond(mmt, N)
   */

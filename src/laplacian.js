@@ -9,6 +9,7 @@ function comparePair (a, b) {
   return a[0] - b[0] || a[1] - b[1]
 }
 
+/*
 module.exports = function calcLaplacian (cells, positions) {
   var i
   var numVerts = positions.length
@@ -86,6 +87,52 @@ module.exports = function calcLaplacian (cells, positions) {
   for (i = 0; i < numVerts; ++i) {
     result.push([i, i, -1])
   }
+
+  return result
+}
+*/
+
+module.exports = function calcLaplacian (cells, trace) {
+  var i
+
+  console.log("len: ", trace.length)
+//  var trace = new Float64Array(positions.length)
+  for (i = 0; i < trace.length; ++i) {
+    trace[i] = 0
+  }
+
+  var result = []
+
+  for (i = 0; i < cells.length; ++i) {
+    var cell = cells[i]
+    var ia = cell[0]
+    var ib = cell[1]
+    var ic = cell[2]
+
+    result.push(
+      [ia, ib, -1],
+      [ib, ic, -1],
+      [ic, ia, -1])
+
+    trace[ia] += 1
+    trace[ib] += 1
+    trace[ic] += 1
+  }
+
+//  console.log("so far: ", JSON.stringify(result) )
+  for(var i = 0; i < trace.length; ++i) {
+    result.push(
+      [i, i, trace[i]])
+  }
+ // console.log("next: ", JSON.stringify(result) )
+
+  for(var i = 0; i < result.length; ++i) {
+    var e = result[i]
+
+    e[2] /= trace[e[0]]
+  }
+
+  result.sort(comparePair)
 
   return result
 }
