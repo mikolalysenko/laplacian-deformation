@@ -18,6 +18,7 @@
     "gl-vec3": "^1.0.3",
     "gl-wireframe": "^1.0.1",
     "icosphere": "^1.0.0",
+    "mathjs": "^3.16.3",
     "mouse-position": "^2.0.1",
     "primitive-sphere": "^3.0.0",
     "qr-solve": "^0.1.0",
