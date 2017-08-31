@@ -1,7 +1,9 @@
 var CSRMatrix = require('csr-matrix')
 var cmprecond = require('cuthill-mckee')
 var ldl = require('cholesky-solve').prepare
-var calcLaplacian = require('./src/laplacian')
+var calcLaplacian = require('./src/laplacian').calcLaplacian
+var calcLaplacianReal = require('./src/laplacian').calcLaplacianReal
+
 var csrgemtm = require('./src/csrgemtm')
 var qrSolve = require('qr-solve')
 
@@ -49,6 +51,13 @@ module.exports = function (cells, positions, handleIds) {
   }
 
   var delta = lapMat.apply(flattened, new Float64Array(N))
+
+
+  // all right, got the delta coords. now use the delta coords to calculate the REAL matrix!
+
+
+
+
 
   // augment matrix
   var P = positions.length

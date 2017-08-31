@@ -95,11 +95,11 @@ function comparePair (a, b) {
   }
 */
 
-module.exports = function calcLaplacian (cells, positions, trace) {
+module.exports.calcLaplacian = function (cells, positions, trace) {
   var i
   console.log("begin calc laplacina")
 
-  /*
+
   var adj = []
   for(var i = 0; i < positions.length; ++i) {
     adj[i] = []
@@ -113,7 +113,7 @@ module.exports = function calcLaplacian (cells, positions, trace) {
       adj[a].push(b)
     }
   }
-
+/*
 
   for(var i = 0; i < positions.length; ++i) {
     // compute transform T_i
@@ -210,6 +210,154 @@ module.exports = function calcLaplacian (cells, positions, trace) {
 */
 
 
+  var N = positions.length*3
+
+  console.log("BREAK HERE")
+  var buf = new Float64Array(N)
+  var result = []
+
+  for(i = 0; i < N; ++i) {
+
+    for(j = 0; j < N; ++j) {
+      buf[j] = 0
+    }
+
+    buf[i] = 1
+
+    var d = Math.floor(i / positions.length)
+
+    var k = i - d * positions.length
+
+    var w = -1.0 / adj[k].length
+
+    for(var j = 0; j < adj[k].length; ++j) {
+      buf[d * positions.length +  adj[k][j]  ] = w
+    }
+
+    for(var j = 0; j < N; ++j) {
+
+      if(Math.abs(buf[j]) > 1e-7) {
+        result.push([i, j, buf[j]])
+      }
+
+    }
+
+  }
+
+  console.log("after: ", (result) )
+
+  result.sort(comparePair)
+
+  return result
+}
+
+module.exports.calcLaplacianReal = function (cells, positions, trace, delta) {
+  var i
+  console.log("begin calc laplacina")
+
+
+  var adj = []
+  for(var i = 0; i < positions.length; ++i) {
+    adj[i] = []
+  }
+
+  for(var i = 0; i < cells.length; ++i) {
+    var c = cells[i]
+    for(var j = 0; j < 3; ++j) {
+      var a = c[j+0]
+      var b = c[(j+1) % 3]
+      adj[a].push(b)
+    }
+  }
+
+  for(var i = 0; i < positions.length; ++i) {
+    // compute transform T_i
+
+    At_coeffs = []
+
+    // set of {i} and N
+    var inset = []
+    inset.push(i)
+    for(var j = 0; j < adj[i].length; ++j) {
+      inset.push(adj[i][j])
+    }
+
+    var At = []
+    for(var row = 0; row < 7; ++row) {
+
+      At[row] = []
+      for(var col = 0; col < inset.length*3; ++col) {
+        At[row][col] = 0
+
+      }
+
+    }
+
+    for(var j = 0; j < inset.length; ++j) {
+      var k = inset[j]
+
+      var vk = positions[k]
+      const x = 0
+      const y = 1
+      const z = 2
+
+      At[0][j*3 + 0] =  +vk[x]
+      At[1][j*3 + 0] = 0
+      At[2][j*3 + 0] = +vk[z]
+      At[3][j*3 + 0] = -vk[y]
+      At[4][j*3 + 0] = +1
+      At[5][j*3 + 0] = 0
+      At[6][j*3 + 0] = 0
+
+      At[0][j*3 + 1] = +vk[y]
+      At[1][j*3 + 1] = -vk[z]
+      At[2][j*3 + 1] = 0
+      At[3][j*3 + 1] = +vk[x]
+      At[4][j*3 + 1] = 0
+      At[5][j*3 + 1] = +1
+      At[6][j*3 + 1] = 0
+
+      At[0][j*3 + 2] = +vk[z]
+      At[1][j*3 + 2] = +vk[y]
+      At[2][j*3 + 2] = -vk[x]
+      At[3][j*3 + 2] = 0
+      At[4][j*3 + 2] = 0
+      At[5][j*3 + 2] = 0
+      At[6][j*3 + 2] = 1
+    }
+
+    var A = mathjs.transpose(At)
+    var prod = mathjs.multiply(At, A)
+
+    var invprod = mathjs.inv(prod)
+
+    var eps = 0.00001
+    var sanity = mathjs.multiply(invprod, prod)
+    //    console.log("sanity: ", sanity)
+    for(var a = 0; a < sanity.length; ++a) {
+      for(var b = 0; b < sanity.length; ++b) {
+
+        if(a == b) {
+          if(Math.abs(sanity[a][b] - 1.0) > eps) {
+            console.log("MATRIX DID NOT PASS SANITY ", i, sanity)
+            return
+          }
+        } else {
+
+          if(Math.abs(sanity[a][b]) > eps) {
+            console.log("MATRIX DID NOT PASS SANITY ", i, sanity)
+            return
+          }
+
+        }
+
+      }
+    }
+
+    var pseudoinv = mathjs.multiply(invprod, At)
+
+    //  var At_mat = CSRMatrix.fromList(At_coeffs, 7, inset.length*3)
+  }
 
   console.log("len: ", trace.length)
   //  var trace = new Float64Array(positions.length)
