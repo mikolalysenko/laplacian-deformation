@@ -161,7 +161,7 @@ function updateProgress(i) {
 
 function loop () {
 
-  handlesObjArr.push(makeHandlesObj(workItems[iWork]))
+//  handlesObjArr.push(makeHandlesObj(workItems[iWork]))
   ++iWork
   updateProgress(iWork)
 
@@ -182,6 +182,10 @@ updateProgress(0)
 setTimeout(loop, 0)
 
 function executeRest() {
+
+  console.log("DONE LOADING")
+  handlesObjArr.push(makeHandlesObj(workItems[0]))
+
   // set current handle that we're manipulating.
   var handlesObj = handlesObjArr[0]
   const canvas = document.body.appendChild(document.createElement('canvas'))

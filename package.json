@@ -31,7 +31,8 @@
   },
   "scripts": {
     "test": "tape test/*.js",
-    "start": "budo --live --open src/vis.js"
+    "start": "budo --live --open src/vis.js",
+    "test2": "node test/translate.js"
   },
   "repository": {
     "type": "git",

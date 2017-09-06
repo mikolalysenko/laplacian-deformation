@@ -5,8 +5,9 @@ var calcLaplacian = require('./src/laplacian').calcLaplacian
 var calcLaplacianReal = require('./src/laplacian').calcLaplacianReal
 
 var csrgemtm = require('./src/csrgemtm')
-var qrSolve = require('qr-solve')
 
+//var qrSolve = require('qr-solve')
+var qrSolve = require('./lol3.js')
 function transpose (positions) {
   var x = new Float64Array(positions.length)
   var y = new Float64Array(positions.length)
@@ -54,19 +55,16 @@ module.exports = function (cells, positions, handleIds) {
 
 
   // all right, got the delta coords. now use the delta coords to calculate the REAL matrix!
-
-
-
-
+  var coeffsReal = calcLaplacianReal(cells, positions, trace, delta)
 
   // augment matrix
   var P = positions.length
   for (var i = 0; i < handleIds.length; ++i) {
-    coeffs.push([i*3 + N + 0, handleIds[i] + 0 * P, 1])
-    coeffs.push([i*3 + N + 1, handleIds[i] + 1 * P, 1])
-    coeffs.push([i*3 + N + 2, handleIds[i] + 2 * P, 1])
+    coeffsReal.push([i*3 + N + 0, handleIds[i] + 0 * P, 1])
+    coeffsReal.push([i*3 + N + 1, handleIds[i] + 1 * P, 1])
+    coeffsReal.push([i*3 + N + 2, handleIds[i] + 2 * P, 1])
   }
-  var augMat = CSRMatrix.fromList(coeffs, M, N)
+  var augMat = CSRMatrix.fromList(coeffsReal, M, N)
 
   /*
   // calculate square matrix
@@ -76,7 +74,7 @@ module.exports = function (cells, positions, handleIds) {
   */
 
   // precalculate solver
-  var solve = qrSolve.prepare(coeffs, M, N)
+  var solve = qrSolve.prepare(coeffsReal, M, N)
 
   var b = new Float64Array(M)
   var x = new Float64Array(N)
@@ -95,7 +93,7 @@ module.exports = function (cells, positions, handleIds) {
     }
     */
     for(var i = 0; i < delta.length; ++i) {
-      b[count++] = delta[i]
+      b[count++] = 0
     }
 
     for (var j = 0; j < handlePositions.length; ++j) {

@@ -27,6 +27,8 @@ tape('translation', function (t) {
 
       var actualResult = []
       var expectedResult = []
+      var original = []
+
       for (var i = 0; i < positions.length; ++i) {
         var actual = [
           d[3 * i],
@@ -40,21 +42,25 @@ tape('translation', function (t) {
         ]
         actualResult.push(roundStr(actual))
         expectedResult.push(roundStr(expected))
+        original.push(roundStr(positions[i]))
       }
+
+      console.log("orig: ", original)
 
       t.equals(actualResult.join(), expectedResult.join(), comment)
     }
   }
 
   const tetrahedron = ch('T')
+  console.log("IN MESH: ", tetrahedron)
   var runTest = testTranslate(tetrahedron.cells, tetrahedron.positions, 0)
 
-//  runTest([0, 0, 0])
-
+  runTest([0, 0, 0])
+/*
   runTest([-1, -1, -1])
   runTest([1, 0, 0])
   runTest([0, 1, 0])
   runTest([0, 0, 1])
-
+*/
   t.end()
 })
