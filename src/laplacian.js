@@ -361,6 +361,19 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta) {
     var pseudoinv = mathjs.multiply(invprod, At)
 
     Ts[i] = pseudoinv
+
+    var testv = []
+    var y = 0
+    for (var o = 0; o < positions.length; ++o) {
+        for (var d = 0; d < 3; ++d) {
+        testv[y++] = positions[o][d]
+      }
+    }
+
+    var sanitycheck = mathjs.multiply(pseudoinv, testv);
+    console.log("sanity check: ", sanitycheck)
+
+
     //  var At_mat = CSRMatrix.fromList(At_coeffs, 7, inset.length*3)
   }
 
@@ -402,7 +415,7 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta) {
     var dz = delta[k + positions.length * 2]
 
     var b = []
-    b.push(i)
+    b.push(i) // TODO: wait a minute, should i really be here!?!?!
     for(var j = 0; j < adj[k].length; ++j) {
       // TODO: dont we need something like d*positions.length somewhere?
       b.push(adj[k][j])
@@ -470,7 +483,7 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta) {
 
   result.sort(comparePair)
 
-  return result''
+  return result
 
 
 }
@@ -513,24 +526,19 @@ module.exports.calcLaplacianReal2 = function (cells, positions, trace, delta) {
 
     var At = []
     for(var row = 0; row < 7; ++row) {
-
       At[row] = []
       for(var col = 0; col < inset.length*3; ++col) {
         At[row][col] = 0
-
       }
-
     }
 
     for(var j = 0; j < inset.length; ++j) {
       var k = inset[j]
 
-
       var vk = positions[k]
       const x = 0
       const y = 1
       const z = 2
-
 
       At[0][j*3 + 0] =  +vk[x]
       At[1][j*3 + 0] = 0
@@ -580,9 +588,7 @@ module.exports.calcLaplacianReal2 = function (cells, positions, trace, delta) {
             console.log("MATRIX DID NOT PASS SANITY ", i, sanity)
             return
           }
-
         }
-
       }
     }
 
@@ -602,6 +608,8 @@ module.exports.calcLaplacianReal2 = function (cells, positions, trace, delta) {
     for(var j = 0; j < inset.length; ++j) {
       var e = inset[j]
 
+      var d = insert.length - 1
+
       var dx = delta[e + positions.length * 0]
       var dy = delta[e + positions.length * 1]
       var dz = delta[e + positions.length * 2]
@@ -611,28 +619,30 @@ module.exports.calcLaplacianReal2 = function (cells, positions, trace, delta) {
       var ay = dx * A[s][1 + j*3] - dy * A[h3][1 + j*3] + dz * A[h2][1 + j*3] + A[tx][1 + j*3]
       var az = dx * A[s][2 + j*3] - dy * A[h3][2 + j*3] + dz * A[h2][2 + j*3] + A[tx][2 + j*3]
 
-
-
       // now do bx. is second row of T_ij
-      var bx = dx * A[s][0 + j*3] - dy * A[h3][0 + j*3] + dz * A[h2][0 + j*3] + A[tx][0 + j*3]
+      var bx = dx * a[h3][0 + j*3] - dy * a[s][0 + j*3] - dz * a[h1][0 + j*3] + a[ty][0 + j*3]
+      var by = dx * a[h3][1 + j*3] - dy * a[s][1 + j*3] - dz * a[h1][1 + j*3] + a[ty][1 + j*3]
+      var bz = dx * a[h3][2 + j*3] - dy * a[s][2 + j*3] - dz * a[h1][2 + j*3] + a[ty][2 + j*3]
 
-
+      // now do cz.
+      var cx = -dx * a[h2][0 + j*3] + dy * a[h1][0 + j*3] - dz * a[s][0 + j*3] + a[tz][0 + j*3]
+      var cy = -dx * a[h2][1 + j*3] + dy * a[h1][1 + j*3] - dz * a[s][1 + j*3] + a[tz][1 + j*3]
+      var cz = -dx * a[h2][2 + j*3] + dy * a[h1][2 + j*3] - dz * a[s][2 + j*3] + a[tz][2 + j*3]
 
       var row = 3 * inset[0]
       var col = 3 * e
 
-      result.push_back([row+0, col+0, ax])
-      result.push_back([row+0, col+1, ay])
-      result.push_back([row+0, col+2, az])
+      result.push_back([row+0, col+0, ax - 1])
+      result.push_back([row+0, col+1, ay + 1/d])
+      result.push_back([row+0, col+2, az + 1/d])
 
-      result.push_back([row+1, col+0, bx])
-      result.push_back([row+1, col+1, by])
-      result.push_back([row+1, col+2, bz])
+      result.push_back([row+1, col+0, bx + 1/d])
+      result.push_back([row+1, col+1, by - 1])
+      result.push_back([row+1, col+2, bz + 1/d])
 
-      result.push_back([row+2, col+0, cx])
-      result.push_back([row+2, col+1, cy])
-      result.push_back([row+2, col+2, cz])
-
+      result.push_back([row+2, col+0, cx + 1/d])
+      result.push_back([row+2, col+1, cy + 1/d])
+      result.push_back([row+2, col+2, cz - 1])
 
       // output to
       // row+0
@@ -642,36 +652,31 @@ module.exports.calcLaplacianReal2 = function (cells, positions, trace, delta) {
       // col+0
       // col+1
       // col+2
-
     }
 
-
-    //Ts[i] = pseudoinv
-    //  var At_mat = CSRMatrix.fromList(At_coeffs, 7, inset.length*3)
+    //ts[i] = pseudoinv
+    //  var at_mat = csrmatrix.fromlist(at_coeffs, 7, inset.length*3)
   }
 
-  console.log("Ts: ", Ts)
-
-
+  /*
+  console.log("ts: ", ts)
   console.log("check here")
 
+  var n = positions.length*3
 
-  var N = positions.length*3
+  console.log("break here")
+  var buf = new float64array(n)
 
-  console.log("BREAK HERE")
-  var buf = new Float64Array(N)
-
-  for(i = 0; i < N; ++i) {
-
-    for(j = 0; j < N; ++j) {
+  for(i = 0; i < n; ++i) {
+    for(j = 0; j < n; ++j) {
       buf[j] = 0
     }
 
-    // TODO: is this really correct? compare with the of calcLaplacian()
+    // todo: is this really correct? compare with the of calclaplacian()
     buf[i] = 1
 
     // coordinate component. x=0, y=1, z=1
-    var d = Math.floor(i / positions.length)
+    var d = math.floor(i / positions.length)
 
     // vertex number.
     var k = i - d * positions.length
@@ -689,17 +694,14 @@ module.exports.calcLaplacianReal2 = function (cells, positions, trace, delta) {
     var b = []
     b.push(i)
     for(var j = 0; j < adj[k].length; ++j) {
-      // TODO: dont we need something like d*positions.length somewhere?
+      // todo: dont we need something like d*positions.length somewhere?
       b.push(adj[k][j])
     }
   }
-
-
+*/
   console.log("after: ", (result) )
-
-  result.sort(comparePair)
-
+  result.sort(comparepair)
   return result
 
-
+  return result
 }
