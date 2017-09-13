@@ -3,6 +3,13 @@ var cmprecond = require('cuthill-mckee')
 var ldl = require('cholesky-solve').prepare
 var calcLaplacian = require('./src/laplacian').calcLaplacian
 var calcLaplacianReal = require('./src/laplacian').calcLaplacianReal
+let li = require("./mylib.js")
+
+let EmscriptenMemoryManager = li.EmscriptenMemoryManager
+let SparseMatrix = li.SparseMatrix
+let DenseMatrix = li.DenseMatrix
+let Triplet = li.Triplet
+
 
 var csrgemtm = require('./src/csrgemtm')
 
@@ -97,7 +104,17 @@ module.exports = function (cells, positions, handleIds) {
   // calculate preconditioner
   var pi = cmprecond(mmt, N)
 
-  var solve = ldl(mmt, N)
+//  var solve = ldl(mmt, N)
+
+  let T = new Triplet(N, N)
+  for(var i = 0; i < mmt.length; ++i) {
+    var e = mmt[i]
+    T.addEntry(e[2], e[0], e[1])
+  }
+  let spars = SparseMatrix.fromTriplet(T)
+  let llt = spars.chol()
+
+//  var llt = mmt
 
   // precalculate solver
   //  var solve = qrSolve.prepare(coeffsReal, M, N)
@@ -108,6 +125,7 @@ module.exports = function (cells, positions, handleIds) {
   var y = new Float64Array(M)
 
   var out = new Float64Array(N)
+  var z= DenseMatrix.zeros(M)
 
   return function (handlePositions) {
 
@@ -136,11 +154,22 @@ module.exports = function (cells, positions, handleIds) {
 
 
     //solve(b, x)
-    var x = solve(y)
+    for(var i = 0; i < b.length; ++i) {
+      z.set(y[i], i, 0)
+    }
+    console.log("z.rows: ", z.nRows())
+    console.log("z.cols: ", z.nCols())
+
+    console.log("spars..rows: ", spars.nRows())
+    console.log("spars.cols: ", spars.nCols())
+
+
+    var ret = llt.solvePositiveDefinite(z)
+//    var x = solve(y)
 
     for (var d = 0; d < 3; ++d) {
       for (var i = 0; i < positions.length; ++i) {
-        out[i * 3 + d] = x[i + d * P]
+        out[i * 3 + d] = ret.get(i, 0) //x[i + d * P]
       }
     }
     /*
