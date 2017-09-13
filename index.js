@@ -21,6 +21,11 @@ function transpose (positions) {
   return [x, y, z]
 }
 
+function comparePair (a, b) {
+  return a[0] - b[0] || a[1] - b[1]
+}
+
+
 module.exports = function (cells, positions, handleIds) {
   var N = positions.length*3
   var M = N + handleIds.length*3
@@ -28,6 +33,10 @@ module.exports = function (cells, positions, handleIds) {
   var trace = new Float64Array(N)
 
   var coeffs = calcLaplacian(cells, positions, trace)
+  //  console.log("coeffs: ", coeffs)
+  console.log("real: ", coeffs)
+
+
   var lapMat = CSRMatrix.fromList(coeffs, N, N)
 
 //  console.log("lapmat: ", (lapMat) )
@@ -56,6 +65,13 @@ module.exports = function (cells, positions, handleIds) {
 
   // all right, got the delta coords. now use the delta coords to calculate the REAL matrix!
   var coeffsReal = calcLaplacianReal(cells, positions, trace, delta)
+/*
+  for(var i = 0; i < coeffsReal.length; ++i) {
+
+  }
+  */
+
+  console.log("eric: ", coeffsReal)
 
   // augment matrix
   var P = positions.length
@@ -66,18 +82,31 @@ module.exports = function (cells, positions, handleIds) {
   }
   var augMat = CSRMatrix.fromList(coeffsReal, M, N)
 
-  /*
+  var coeffsRealTrans = []
+  for(var i = 0; i < coeffsReal.length; ++i) {
+    var e = coeffsReal[i]
+    coeffsRealTrans.push([e[1], e[0], e[2]])
+  }
+  coeffsRealTrans.sort(comparePair)
+
+
+  var augMatTrans = CSRMatrix.fromList(coeffsRealTrans, N, M)
+
   // calculate square matrix
-//  var mmt = csrgemtm(augMat, augMat)
+  var mmt = csrgemtm(augMatTrans, augMatTrans)
   // calculate preconditioner
   var pi = cmprecond(mmt, N)
-  */
+
+  var solve = ldl(mmt, N)
 
   // precalculate solver
-  var solve = qrSolve.prepare(coeffsReal, M, N)
+  //  var solve = qrSolve.prepare(coeffsReal, M, N)
+
 
   var b = new Float64Array(M)
   var x = new Float64Array(N)
+  var y = new Float64Array(M)
+
   var out = new Float64Array(N)
 
   return function (handlePositions) {
@@ -102,7 +131,12 @@ module.exports = function (cells, positions, handleIds) {
       b[count++] = handlePositions[j][2]
     }
 
-    solve(b, x)
+    // multiply left side by augmatTrans.
+    augMatTrans.apply(b, y)
+
+
+    //solve(b, x)
+    var x = solve(y)
 
     for (var d = 0; d < 3; ++d) {
       for (var i = 0; i < positions.length; ++i) {

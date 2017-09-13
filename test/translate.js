@@ -65,9 +65,9 @@ tape('translation', function (t) {
     }
   }
 
-  //  const tetrahedron = ch('I')
+//    const tetrahedron = ch('T')
   // this one works for restoring.
-  const tetrahedron = icosphere(2)
+   const tetrahedron = icosphere(4)
 
   //  var tetrahedron = require('primitive-sphere')(1.0, { segments: 1 })
 //  console.log("cube: ", tetrahedron )
