@@ -97,7 +97,6 @@ function comparePair (a, b) {
 
 module.exports.calcLaplacian = function (cells, positions, trace) {
   var i
-  console.log("begin calc laplacina")
 
 
   var adj = []
@@ -212,7 +211,7 @@ module.exports.calcLaplacian = function (cells, positions, trace) {
 
   var N = positions.length*3
 
-  console.log("BREAK HERE")
+//  console.log("BREAK HERE")
   var buf = new Float64Array(N)
   var result = []
 
@@ -244,7 +243,7 @@ module.exports.calcLaplacian = function (cells, positions, trace) {
 
   }
 
-  console.log("after: ", (result) )
+//  console.log("after: ", (result) )
 
   result.sort(comparePair)
 
@@ -253,7 +252,7 @@ module.exports.calcLaplacian = function (cells, positions, trace) {
 
 module.exports.calcLaplacianReal = function (cells, positions, trace, delta) {
   var i
-  console.log("begin calc real laplacina")
+//  console.log("begin calc real laplacina")
 
   var adj = []
   for(var i = 0; i < positions.length; ++i) {
@@ -364,28 +363,51 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta) {
 
     var testv = []
     var y = 0
-    for (var o = 0; o < positions.length; ++o) {
-        for (var d = 0; d < 3; ++d) {
-        testv[y++] = positions[o][d]
-      }
+    for (var o = 0; o < inset.length; ++o) {
+      //        for (var d = 0; d < 3; ++d) {
+      var d = inset[o]
+      testv[y++] = positions[d][0]
+      testv[y++] = positions[d][1]
+      testv[y++] = positions[d][2]
+
+//      }
     }
 
     var sanitycheck = mathjs.multiply(pseudoinv, testv);
-    console.log("sanity check: ", sanitycheck)
+    for(var p = 0; p < sanitycheck.length; ++p) {
+      var pass = true
+      var e = sanitycheck[p]
+      if(p == 0) {
+        if(Math.abs(e-1.0) > 1e-6) {
+          pass = false
+        }
+      } else {
+        if(Math.abs(e) > 1e-6) {
+          pass = false
+        }
+
+      }
+
+      if(!pass) {
+        console.log("sanity check fail: ", sanitycheck)
+      }
+
+    }
+//    console.log("sanity check: ", sanitycheck)
 
 
     //  var At_mat = CSRMatrix.fromList(At_coeffs, 7, inset.length*3)
   }
 
-  console.log("Ts: ", Ts)
+//  console.log("Ts: ", Ts)
 
 
-  console.log("check here")
+//  console.log("check here")
 
 
   var N = positions.length*3
 
-  console.log("BREAK HERE")
+//  console.log("BREAK HERE")
   var buf = new Float64Array(N)
   var result = []
 
@@ -415,7 +437,7 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta) {
     var dz = delta[k + positions.length * 2]
 
     var b = []
-    b.push(i) // TODO: wait a minute, should i really be here!?!?!
+    b.push(k) // TODO: wait a minute, should i really be here!?!?!
     for(var j = 0; j < adj[k].length; ++j) {
       // TODO: dont we need something like d*positions.length somewhere?
       b.push(adj[k][j])
@@ -479,7 +501,7 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta) {
 
   }
 
-  console.log("after: ", (result) )
+//  console.log("after: ", (result) )
 
   result.sort(comparePair)
 

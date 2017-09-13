@@ -1,6 +1,7 @@
 var tape = require('tape')
 var deform = require('../index')
 var ch = require('conway-hart')
+var icosphere = require('icosphere')
 
 var TOLERANCE = 1e-4
 
@@ -14,16 +15,27 @@ function roundStr (x) {
 
 tape('translation', function (t) {
   function testTranslate (cells, positions, handleId) {
-    var calcMesh = deform(cells, positions, [handleId])
+    var calcMesh = deform(cells, positions, [0, 1])
 
-    var baseP = positions[handleId]
+    var baseP = positions[0]
+    var baseQ = positions[1]
 
     return function (offset, comment) {
-      var d = calcMesh([[
-        baseP[0] + offset[0],
-        baseP[1] + offset[1],
-        baseP[2] + offset[2]
-      ]])
+      var d = calcMesh([
+
+        [
+          baseP[0],
+          baseP[1],
+          baseP[2]
+        ],
+
+        [
+          baseQ[0],
+          baseQ[1],
+          baseQ[2]
+        ]
+
+                       ])
 
       var actualResult = []
       var expectedResult = []
@@ -46,13 +58,22 @@ tape('translation', function (t) {
       }
 
       console.log("orig: ", original)
+//      console.log("actualResult: ", actualResult.join())
+//      console.log("expectedResult: ", expectedResult.join())
 
       t.equals(actualResult.join(), expectedResult.join(), comment)
     }
   }
 
-  const tetrahedron = ch('T')
-  console.log("IN MESH: ", tetrahedron)
+  //  const tetrahedron = ch('I')
+  // this one works for restoring.
+  const tetrahedron = icosphere(2)
+
+  //  var tetrahedron = require('primitive-sphere')(1.0, { segments: 1 })
+//  console.log("cube: ", tetrahedron )
+  console.log("cube vertices: ", tetrahedron.positions.length )
+
+ // console.log("IN MESH: ", tetrahedron)
   var runTest = testTranslate(tetrahedron.cells, tetrahedron.positions, 0)
 
   runTest([0, 0, 0])

@@ -6,8 +6,8 @@ var calcLaplacianReal = require('./src/laplacian').calcLaplacianReal
 
 var csrgemtm = require('./src/csrgemtm')
 
-//var qrSolve = require('qr-solve')
-var qrSolve = require('./lol3.js')
+var qrSolve = require('qr-solve')
+//var qrSolve = require('./lol3.js')
 function transpose (positions) {
   var x = new Float64Array(positions.length)
   var y = new Float64Array(positions.length)
@@ -30,7 +30,7 @@ module.exports = function (cells, positions, handleIds) {
   var coeffs = calcLaplacian(cells, positions, trace)
   var lapMat = CSRMatrix.fromList(coeffs, N, N)
 
-  console.log("lapmat: ", (lapMat) )
+//  console.log("lapmat: ", (lapMat) )
 
 
   // calculate position derivatives
