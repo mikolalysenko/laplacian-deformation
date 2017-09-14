@@ -122,10 +122,10 @@ module.exports = function (cells, positions, handleIds) {
 
   var b = new Float64Array(M)
   var x = new Float64Array(N)
-  var y = new Float64Array(M)
+  var y = new Float64Array(N)
 
   var out = new Float64Array(N)
-  var z= DenseMatrix.zeros(M)
+  var z= DenseMatrix.zeros(N)
 
   return function (handlePositions) {
 
@@ -154,7 +154,7 @@ module.exports = function (cells, positions, handleIds) {
 
 
     //solve(b, x)
-    for(var i = 0; i < b.length; ++i) {
+    for(var i = 0; i < y.length; ++i) {
       z.set(y[i], i, 0)
     }
     console.log("z.rows: ", z.nRows())
@@ -169,7 +169,7 @@ module.exports = function (cells, positions, handleIds) {
 
     for (var d = 0; d < 3; ++d) {
       for (var i = 0; i < positions.length; ++i) {
-        out[i * 3 + d] = ret.get(i, 0) //x[i + d * P]
+        out[i * 3 + d] = ret.get(i + d*P, 0) //x[i + d * P]
       }
     }
     /*
