@@ -9,6 +9,74 @@ var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
 var sphereMesh = require('primitive-sphere')(1.0, { segments: 16 })
 var prepareDeform = require('../index')
 
+var vectorizeText = require("vectorize-text")
+
+function revisedONB(n, b1, b2) {
+  var b1 = [0.0, 0.0, 0.0]
+  var b2 = [0.0, 0.0, 0.0]
+
+  if (n[2] < 0.0) {
+    const a = 1.0 / (1.0 - n[2]);
+    const b = n[0] * n[1] * a;
+    b1 = [1.0 - n[0] * n[0] * a, -b, n[0]];
+    b2 = [b, n[1] * n[1] * a - 1.0, -n[1]];
+    return [b1, b2]
+  } else {
+    const a = 1.0 / (1.0 + n[2]);
+    const b = -n[0] * n[1] * a;
+    b1 = [1.0 - n[0] * n[0] * a, b, -n[0]];
+    b2 = [b, 1.0 - n[1] * n[1] * a, -n[1]];
+    return [b1, b2]
+  }
+}
+
+function fixCenteredText(str) {
+  var complex =  vectorizeText(str, {
+    triangles: true,
+    width: 0.02,
+    textBaseline: "hanging"
+  })
+
+var aabb = {
+  min: [+1000, +1000],
+  max: [-1000, -1000],
+}
+
+
+  for(var j = 0; j < complex.positions.length; ++j) {
+  var p = complex.positions[j]
+
+  for(var i = 0; i < 2; ++i) {
+    if(p[i] < aabb.min[i]) {
+      aabb.min[i] = p[i]
+    }
+    if(p[i] > aabb.max[i]) {
+      aabb.max[i] = p[i]
+    }
+  }
+  }
+
+var t = [
+    -0.5 * (aabb.min[0] + aabb.max[0]),
+    -0.5 * (aabb.min[1] + aabb.max[1])]
+
+
+for(var j = 0; j < complex.positions.length; ++j) {
+
+  var p = complex.positions[j]
+
+  p[0] += t[0]
+  p[1] += t[1]
+
+  p[1] *= -1.0
+}
+
+  return complex
+
+}
+
+
+
 var aabb = {
   min: [+1000, +1000, +1000],
   max: [-1000, -1000, -1000],
@@ -65,6 +133,22 @@ for(var j = 0; j < bunny.positions.length; ++j) {
   p[2] *= s
 }
 
+var tx = bunny.positions[1081][0]
+var ty = bunny.positions[1081][1]
+var tz = bunny.positions[1081][2]
+
+
+for(var j = 0; j < bunny.positions.length; ++j) {
+
+  var p = bunny.positions[j]
+
+  p[0] -= tx
+  p[1] -= ty
+  p[2] -= tz
+}
+
+//1081
+
 // copy of the mesh, that we use when restoring the mesh.
 var copyBunny = JSON.parse(JSON.stringify(bunny))
 
@@ -76,6 +160,22 @@ function dist(u, v) {
   return Math.sqrt(dx*dx + dy*dy + dz*dz)
 }
 
+var adj = []
+for(var i = 0; i < bunny.positions.length; ++i) {
+  adj[i] = []
+}
+
+for(var i = 0; i < bunny.cells.length; ++i) {
+  var c = bunny.cells[i]
+  for(var j = 0; j < 3; ++j) {
+    var a = c[j+0]
+    var b = c[(j+1) % 3]
+    adj[a].push(b)
+  }
+}
+
+var bunnyLines2 = []
+
 // make an object that can be used to deform a section of the mesh.
 // The function will deform the vertex with index mainHandle, and
 // vertices that are close enough it.
@@ -84,46 +184,162 @@ function makeHandlesObj(mainHandle) {
     handles: []
   }
 
-  newHandlesObj.handles.push(mainHandle)
-
-  /*
-  // add all vertices that are close enough to main handle.
-  // these vertices are deformed together with the main handle.
-  for(var j = 0; j < bunny.positions.length; ++j) {
-    var p = bunny.positions[j]
-    var accept = false
-    if(dist(bunny.positions[newHandlesObj.handles[0]], p) < 0.16) {
-      accept = true
-    }
-
-    if(accept) {
-      newHandlesObj.handles.push(j)
-    }
+  var visited = []
+  for(var i = 0; i < bunny.positions.length; ++i) {
+    visited[i] = false
   }
-*/
-  // now we begin adding some more handles.
-  // These handles will NOT be moved during deformation.
-  // Their positions are kept constant, and so they serve as
-  //n anchors that ensures that the mesh keeps it general shape.
 
-  newHandlesObj.afterHandles = newHandlesObj.handles.length
-  for(var j = 0; j < bunny.positions.length; ++j) {
-    var p = bunny.positions[j]
-    var accept = true
-    for(var i = 0; i < newHandlesObj.handles.length; ++i) {
-      if(dist(bunny.positions[newHandlesObj.handles[i]], p) < 0.16) {
-        accept = false
-        break
+  var currentRing = [mainHandle]
+  newHandlesObj.handles.push(mainHandle)
+//  console.log("console: ", adj[mainHandle])
+
+//  [639, 534, 1625, 1263, 756, 533]
+
+  console.log("mainHandle: ", mainHandle)
+  while(newHandlesObj.handles.length < 5) {
+
+    var nextRing = []
+
+    for(var i = 0; i < currentRing.length; ++i) {
+      var e = currentRing[i]
+
+      if(visited[e])
+        continue
+
+      newHandlesObj.handles.push(e)
+      visited[e] = true
+
+      var adjs = adj[e]
+
+      console.log("adjs: ", e, adjs)
+
+      for(var j = 0; j < adjs.length; ++j) {
+        nextRing.push(adjs[j])
       }
     }
+    currentRing = nextRing
+  }
+  newHandlesObj.afterHandles = newHandlesObj.handles.length
 
-    if(accept) {
-      newHandlesObj.handles.push(j)
+  while(newHandlesObj.handles.length < 20) {
+
+    var nextRing = []
+
+    for(var i = 0; i < currentRing.length; ++i) {
+      var e = currentRing[i]
+
+      if(visited[e])
+        continue
+
+      newHandlesObj.handles.push(e)
+      visited[e] = true
+
+      var adjs = adj[e]
+      for(var j = 0; j < adjs.length; ++j) {
+        nextRing.push(adjs[j])
+      }
+    }
+    currentRing = nextRing
+  }
+
+  var fc = []
+  for(var i = 0; i < bunny.positions.length; ++i) {
+    fc[i] = 0
+  }
+
+  newHandlesObj.afterHandlesMore = newHandlesObj.handles.length
+
+//        newHandlesObj.handles.push(e)
+  for(var i = 0; i < newHandlesObj.handles.length; ++i) {
+    var e = newHandlesObj.handles[i]
+    fc[e]++
+    if(fc > 1) {
+      console.log("THIS IS BAD")
     }
   }
 
-  newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj.handles)
+  var staticVertices = []
+  console.log("currentRing: ", currentRing)
+  for(var i = 0; i < currentRing.length; ++i) {
+    var e = currentRing[i]
+
+    if(visited[e])
+      continue
+
+    staticVertices.push(e)
+    newHandlesObj.handles.push(e)
+
+    visited[e] = true
+  }
+  console.log("staticVertices: ", staticVertices)
+
+  var sv = JSON.parse(JSON.stringify(staticVertices))
+
+  console.log("static vertices: ", sv)
+  var sortedOrder = []
+  var e = sv.shift()
+  sortedOrder.push(e)
+
+  var bunnyLines =  require("gl-wireframe")(bunny.cells)
+  for(var i = 0; i < bunnyLines.length; i+=2) {
+    var f = [bunnyLines[i+0], bunnyLines[i+1]]
+    if(f[0] == e || f[1] == e) {
+      //      console.log("LIST: ", f)
+      bunnyLines2.push(f)
+    }
+  }
+
+  // verify that it is an actual loop.
+  while(sv.length > 0) {
+    var breakOuter = false
+    var adjs = adj[e]
+    for(var i = 0; i < adjs.length; ++i) {
+      for(var j = 0; j < sv.length; ++j) {
+        if(adjs[i] == sv[j]) {
+          breakOuter = true
+          sortedOrder.push(sv[j])
+          e = sv[j]
+          sv.splice(j, 1)
+          break
+        }
+      }
+
+      if(breakOuter)
+        break
+    }
+
+    if(!breakOuter) {
+      console.log("IS NOT PROPER LOOP.")
+      break
+    }
+  }
+  console.log("sorred order: ", sortedOrder)
+
+
   newHandlesObj.mainHandle = mainHandle
+//  newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj.handles)
+  console.log("handles: ", newHandlesObj.handles)
+
+
+
+
+
+
+  var fc = []
+  for(var i = 0; i < bunny.positions.length; ++i) {
+    fc[i] = 0
+  }
+
+  for(var i = 0; i < newHandlesObj.handles.length; ++i) {
+    var e = newHandlesObj.handles[i]
+    fc[e]++
+    if(fc > 1) {
+      console.log("THIS IS BAD")
+    }
+  }
+
+
+
   return newHandlesObj
 }
 
@@ -144,7 +360,6 @@ function createParagraph (elem, text) {
 
 var handlesObjArr = []
 
-
 var workItems = [
   40,
   // 675,
@@ -161,7 +376,7 @@ function updateProgress(i) {
 
 function loop () {
 
-//  handlesObjArr.push(makeHandlesObj(workItems[iWork]))
+  //  handlesObjArr.push(makeHandlesObj(workItems[iWork]))
   ++iWork
   updateProgress(iWork)
 
@@ -184,12 +399,15 @@ setTimeout(loop, 0)
 function executeRest() {
 
   console.log("DONE LOADING")
-  handlesObjArr.push(makeHandlesObj(workItems[0]))
+//  handlesObjArr.push(makeHandlesObj(675))
+  handlesObjArr.push(makeHandlesObj(1263)) // 639, 1625, 1263(good)
+
 
   // set current handle that we're manipulating.
   var handlesObj = handlesObjArr[0]
   const canvas = document.body.appendChild(document.createElement('canvas'))
   const regl = require('regl')({canvas: canvas})
+  console.log("step-1")
 
   var str = `<a href="https://github.com/mikolalysenko/laplacian-deformation"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/82b228a3648bf44fc1163ef44c62fcc60081495e/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_red_aa0000.png"></a>`
 
@@ -202,6 +420,8 @@ function executeRest() {
   var container = document.createElement('div')
   container.innerHTML = str
   document.body.appendChild(container)
+
+  console.log("step0")
 
   var renderHandles = true
   var panel = control([
@@ -231,6 +451,7 @@ function executeRest() {
   document.body.appendChild(div)
 
 
+  console.log("step1")
   /*
     Create command for drawing bunny.
   */
@@ -239,6 +460,9 @@ function executeRest() {
     type: 'float',
     usage: 'dynamic'
   })
+
+  var bunnyNormals = normals(bunny.cells, bunny.positions)
+
   var drawBunny = regl({
     vert: `
     precision mediump float;
@@ -281,11 +505,71 @@ function executeRest() {
         normalized: true
       },
 
-      normal: normals(bunny.cells, bunny.positions)
+      normal: bunnyNormals
     },
 
     elements: bunny.cells,
     primitive: 'triangles'
+  })
+
+  var bunnyLines =  require("gl-wireframe")(bunny.cells)
+//  var bunnyLines = bunnyLines2
+  var drawBunnyLines = regl({
+    vert: `
+    precision mediump float;
+    attribute vec3 position;
+    uniform mat4 view, projection;
+    void main() {
+      gl_Position = projection * view * vec4(position, 1);
+    }`,
+
+    frag: `
+    precision mediump float;
+
+    void main() {
+      gl_FragColor = vec4(vec3(0.0, 1.0, 0.0)
+                          , 1.0);
+
+    }`,
+
+    attributes: {
+      position: {
+        buffer: positionBuffer,
+        normalized: true
+      },
+    },
+
+    elements: bunnyLines,
+    primitive: 'lines'
+  })
+
+  var drawBunnyLines2 = regl({
+    vert: `
+    precision mediump float;
+    attribute vec3 position;
+    uniform mat4 view, projection;
+    void main() {
+      gl_Position = projection * view * vec4(position, 1);
+    }`,
+
+    frag: `
+    precision mediump float;
+
+    void main() {
+      gl_FragColor = vec4(vec3(0.0, 0.0, 1.0)
+                          , 1.0);
+
+    }`,
+
+    attributes: {
+      position: {
+        buffer: positionBuffer,
+        normalized: true
+      },
+    },
+
+    elements: bunnyLines2,
+    primitive: 'lines'
   })
 
   // function for deforming the current handle.
@@ -334,8 +618,8 @@ function executeRest() {
 
     positionBuffer.subdata(bunny.positions)
   }
-  doDeform([+0.0, +0.0, 0.0])
-//    positionBuffer.subdata(bunny.positions)
+  //doDeform([+0.0, +0.0, 0.0])
+      positionBuffer.subdata(bunny.positions)
 
   /*
     Setup camera.
@@ -403,7 +687,7 @@ function executeRest() {
     uniform vec3 pos;
 
     void main() {
-      gl_Position = projection * view * vec4(position*0.015 + pos, 1);
+      gl_Position = projection * view * vec4(position*0.010 + pos, 1);
     }`,
 
     frag: `
@@ -429,6 +713,97 @@ function executeRest() {
       }
     }
   })
+
+  // 1263
+
+  var makeDrawtext = function(arg) {
+    var itext =arg //1081
+
+    var up = bunnyNormals[itext]
+    var right = [0.0,0.0,0.0]
+    var forward = [0.0,0.0,0.0]
+
+    var ret = revisedONB(up)
+    right = ret[0]
+    forward = ret[1]
+
+    var basis = [
+      right[0], right[1], right[2], 0,
+      forward[0], forward[1], forward[2], 0,
+
+      up[0], up[1], up[2], 0,
+
+      0    , 0       , 0         , 1
+    ]
+
+    //  mat4.transpose(basis, basis)
+
+    var pos = bunny.positions[itext]
+
+    var str = arg + ""
+    while(str.length < 4) {
+      str = "0" + str
+    }
+
+    var complex = fixCenteredText(str)
+
+    return regl({
+      vert: `
+      precision mediump float;
+      attribute vec2 position;
+      uniform mat4 view, projection, rotation;
+      uniform vec3 translation, upDir;
+
+      void main() {
+        gl_Position = projection * view *
+
+        (vec4(translation, 0.0) +  (vec4(upDir*0.005, 0.0) + rotation * vec4(vec3(position.x, position.y, 0.0), 1.0))
+
+        );
+      }`,
+
+      frag: `
+      precision mediump float;
+
+      uniform vec3 color;
+      void main() {
+        gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+      }`,
+
+      attributes: {
+        position: () => complex.positions,
+      },
+
+      elements: () => complex.cells,
+
+      uniforms: {
+        rotation: basis,
+        upDir: up,
+
+        translation: pos,
+
+      }
+    })
+
+  }
+
+
+  for(var i = 0; i < handlesObjArr.length; ++i) {
+        var ho = handlesObjArr[i]
+
+    var hp = bunny.positions[ho.mainHandle] // handle position
+  }
+
+
+  var drawTexts = []
+  var handlesObj = handlesObjArr[0]
+  for(var i = 0; i < handlesObj.handles.length; ++i) {
+    //var handle = bunny.positions[handlesObj.handles[i]]
+    drawTexts.push(makeDrawtext(handlesObj.handles[i]))
+  }
+
+
+
 
   function dist(a, b) {
     return Math.sqrt(  (a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1])  )
@@ -456,7 +831,7 @@ function executeRest() {
 
   var prevPos = null
   var prevMousePos = null
-  canvas.addEventListener('mousedown', mousedown, false)
+  //  canvas.addEventListener('mousedown', mousedown, false)
 
   /*
     When clicking mouse, pick handle that is near enough to mouse, and closest to the camera.
@@ -514,7 +889,7 @@ function executeRest() {
 
           }
         }
-        handlesObj = handlesObjArr[minI]
+        //        handlesObj = handlesObjArr[minI]
         isDragging = true
         prevPos = null
       } else {
@@ -535,6 +910,8 @@ function executeRest() {
 
   camera.tick()
 
+  console.log("handles: ", handlesObj)
+
   regl.frame(({viewportWidth, viewportHeight}) => {
     regl.clear({
       depth: 1,
@@ -542,44 +919,63 @@ function executeRest() {
     })
 
     globalScope( () => {
-      drawBunny()
+     drawBunny()
+      drawBunnyLines2()
+      drawBunnyLines()
+
 
       if(handlesObj != null) {
 
-        for(var i = 0; i < handlesObj.handles.length; ++i) {
+          for(var i = 0; i < handlesObj.handles.length; ++i) {
           //      if(i != 3) continue
           var handle = bunny.positions[handlesObj.handles[i]]
 
-          var c = [0.0, 1.0, 0.0]
+            var c
 
-          if(i == 0) { // 3
-            c = [0.0, 0.0, 1.0]
+            if(i > handlesObj.afterHandlesMore) { // 3
+              c = [1.0, 0.0, 0.0]
+
+            } else if(i > handlesObj.afterHandles){
+//              continue
+          c = [0.0, 1.0, 0.0]
+
+            } else {
+              //              continue
+
+            var c = [0.0, 0.0, 1.0]
+
           }
 
-          drawHandle({pos: handle, color: c})
-        }
+            if(i == 27) {
+//              drawHandle({pos: handle, color: c})
+    //          console.log("i: ", handlesObj.handles[i])
+            }
+          }
       }
 
 
-      /*
 
       // render handles
       if(renderHandles) {
-        for(var i = 0; i < handlesObjArr.length; ++i) {
+      for(var i = 0; i < handlesObjArr.length; ++i) {
 
-          var mh = handlesObjArr[i].mainHandle
-          var handle = bunny.positions[mh]
+      var mh = handlesObjArr[i].mainHandle
+      var handle = bunny.positions[mh]
 
-          var c = [0.0, 0.0, 1.0]
+      var c = [0.0, 0.0, 1.0]
 
-          if(handlesObjArr[i] == handlesObj)
-            var c = [0.0, 1.0, 0.0]
+      if(handlesObjArr[i] == handlesObj)
+      var c = [0.0, 1.0, 0.0]
 
-          drawHandle({pos: handle, color: c})
+//      drawHandle({pos: handle, color: c})
 
-        }
       }
-      */
+      }
+
+      for(var i = 0; i < drawTexts.length; ++i) {
+        drawTexts[i]()
+
+      }
     })
 
     // if the mouse is moved while left mouse-button is down,
