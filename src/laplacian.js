@@ -98,7 +98,6 @@ function comparePair (a, b) {
 module.exports.calcLaplacian = function (cells, positions, trace) {
   var i
 
-
   var adj = []
   for(var i = 0; i < positions.length; ++i) {
     adj[i] = []
@@ -296,12 +295,10 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta) {
     for(var j = 0; j < inset.length; ++j) {
       var k = inset[j]
 
-
       var vk = positions[k]
       const x = 0
       const y = 1
       const z = 2
-
 
       At[0][j*3 + 0] =  +vk[x]
       At[1][j*3 + 0] = 0

@@ -37,39 +37,39 @@ function fixCenteredText(str) {
     textBaseline: "hanging"
   })
 
-var aabb = {
-  min: [+1000, +1000],
-  max: [-1000, -1000],
-}
+  var aabb = {
+    min: [+1000, +1000],
+    max: [-1000, -1000],
+  }
 
 
   for(var j = 0; j < complex.positions.length; ++j) {
-  var p = complex.positions[j]
+    var p = complex.positions[j]
 
-  for(var i = 0; i < 2; ++i) {
-    if(p[i] < aabb.min[i]) {
-      aabb.min[i] = p[i]
-    }
-    if(p[i] > aabb.max[i]) {
-      aabb.max[i] = p[i]
+    for(var i = 0; i < 2; ++i) {
+      if(p[i] < aabb.min[i]) {
+        aabb.min[i] = p[i]
+      }
+      if(p[i] > aabb.max[i]) {
+        aabb.max[i] = p[i]
+      }
     }
   }
+
+  var t = [
+      -0.5 * (aabb.min[0] + aabb.max[0]),
+      -0.5 * (aabb.min[1] + aabb.max[1])]
+
+
+  for(var j = 0; j < complex.positions.length; ++j) {
+
+    var p = complex.positions[j]
+
+    p[0] += t[0]
+    p[1] += t[1]
+
+    p[1] *= -1.0
   }
-
-var t = [
-    -0.5 * (aabb.min[0] + aabb.max[0]),
-    -0.5 * (aabb.min[1] + aabb.max[1])]
-
-
-for(var j = 0; j < complex.positions.length; ++j) {
-
-  var p = complex.positions[j]
-
-  p[0] += t[0]
-  p[1] += t[1]
-
-  p[1] *= -1.0
-}
 
   return complex
 
@@ -180,6 +180,42 @@ var bunnyLines2 = []
 // The function will deform the vertex with index mainHandle, and
 // vertices that are close enough it.
 function makeHandlesObj(mainHandle) {
+
+    var newHandlesObj = {
+    handles: []
+  }
+
+  newHandlesObj.handles.push(mainHandle)
+
+  // now we begin adding some more handles.
+  // These handles will NOT be moved during deformation.
+  // Their positions are kept constant, and so they serve as
+  //n anchors that ensures that the mesh keeps it general shape.
+
+  newHandlesObj.afterHandles = newHandlesObj.handles.length
+  for(var j = 0; j < bunny.positions.length; ++j) {
+    var p = bunny.positions[j]
+    var accept = true
+    for(var i = 0; i < newHandlesObj.handles.length; ++i) {
+      if(dist(bunny.positions[newHandlesObj.handles[i]], p) < 0.16) {
+        accept = false
+        break
+      }
+    }
+
+    if(accept) {
+      newHandlesObj.handles.push(j)
+    }
+  }
+
+  newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj.handles)
+  newHandlesObj.mainHandle = mainHandle
+  return newHandlesObj
+
+
+
+
+  /*
   var newHandlesObj = {
     handles: []
   }
@@ -190,13 +226,11 @@ function makeHandlesObj(mainHandle) {
   }
 
   var currentRing = [mainHandle]
-  newHandlesObj.handles.push(mainHandle)
-//  console.log("console: ", adj[mainHandle])
-
-//  [639, 534, 1625, 1263, 756, 533]
+  //  newHandlesObj.handles.push(mainHandle)
+  //  console.log("console: ", adj[mainHandle])
 
   console.log("mainHandle: ", mainHandle)
-  while(newHandlesObj.handles.length < 5) {
+  while(newHandlesObj.handles.length < 10) {
 
     var nextRing = []
 
@@ -221,7 +255,9 @@ function makeHandlesObj(mainHandle) {
   }
   newHandlesObj.afterHandles = newHandlesObj.handles.length
 
-  while(newHandlesObj.handles.length < 20) {
+
+
+  while(newHandlesObj.handles.length < 80) {
 
     var nextRing = []
 
@@ -242,21 +278,28 @@ function makeHandlesObj(mainHandle) {
     currentRing = nextRing
   }
 
-  var fc = []
-  for(var i = 0; i < bunny.positions.length; ++i) {
-    fc[i] = 0
-  }
-
   newHandlesObj.afterHandlesMore = newHandlesObj.handles.length
 
-//        newHandlesObj.handles.push(e)
-  for(var i = 0; i < newHandlesObj.handles.length; ++i) {
-    var e = newHandlesObj.handles[i]
-    fc[e]++
-    if(fc > 1) {
-      console.log("THIS IS BAD")
-    }
-  }
+
+    // var fc = []
+    // for(var i = 0; i < bunny.positions.length; ++i) {
+    // fc[i] = 0
+    // }
+
+
+    // //        newHandlesObj.handles.push(e)
+    // for(var i = 0; i < newHandlesObj.handles.length; ++i) {
+    // var e = newHandlesObj.handles[i]
+    // fc[e]++
+    // if(fc > 1) {
+    // console.log("THIS IS BAD")
+    // }
+    // }
+
+
+
+
+
 
   var staticVertices = []
   console.log("currentRing: ", currentRing)
@@ -271,76 +314,64 @@ function makeHandlesObj(mainHandle) {
 
     visited[e] = true
   }
-  console.log("staticVertices: ", staticVertices)
 
-  var sv = JSON.parse(JSON.stringify(staticVertices))
 
-  console.log("static vertices: ", sv)
-  var sortedOrder = []
-  var e = sv.shift()
-  sortedOrder.push(e)
+  // console.log("staticVertices: ", staticVertices)
 
-  var bunnyLines =  require("gl-wireframe")(bunny.cells)
-  for(var i = 0; i < bunnyLines.length; i+=2) {
-    var f = [bunnyLines[i+0], bunnyLines[i+1]]
-    if(f[0] == e || f[1] == e) {
-      //      console.log("LIST: ", f)
-      bunnyLines2.push(f)
-    }
-  }
+  // var sv = JSON.parse(JSON.stringify(staticVertices))
 
-  // verify that it is an actual loop.
-  while(sv.length > 0) {
-    var breakOuter = false
-    var adjs = adj[e]
-    for(var i = 0; i < adjs.length; ++i) {
-      for(var j = 0; j < sv.length; ++j) {
-        if(adjs[i] == sv[j]) {
-          breakOuter = true
-          sortedOrder.push(sv[j])
-          e = sv[j]
-          sv.splice(j, 1)
-          break
-        }
-      }
+  // sv = [577, 424, 1243, 103, 586, 625, 732, 532, 207, 1638, 1081]
 
-      if(breakOuter)
-        break
-    }
+  // console.log("static vertices: ", sv)
+  // var sortedOrder = []
+  // var e = sv.shift()
+  // sortedOrder.push(e)
 
-    if(!breakOuter) {
-      console.log("IS NOT PROPER LOOP.")
-      break
-    }
-  }
-  console.log("sorred order: ", sortedOrder)
+  // var bunnyLines =  require("gl-wireframe")(bunny.cells)
+  // for(var i = 0; i < bunnyLines.length; i+=2) {
+  //   var f = [bunnyLines[i+0], bunnyLines[i+1]]
+  //   if(f[0] == e || f[1] == e) {
+  //     //      console.log("LIST: ", f)
+  //     bunnyLines2.push(f)
+  //   }
+  // }
+
+  // // verify that it is an actual loop.
+  // while(sv.length > 0) {
+  //   var breakOuter = false
+  //   var adjs = adj[e]
+  //   for(var i = 0; i < adjs.length; ++i) {
+
+  //     var p = adjs[i]
+
+  //     for(var j = 0; j < sv.length; ++j) {
+  //       if(p === sv[j]) {
+  //         breakOuter = true
+  //         sortedOrder.push(sv[j])
+  //         e = sv[j]
+  //         sv.splice(j, 1)
+  //         break
+  //       }
+  //     }
+
+  //     if(breakOuter)
+  //       break
+  //   }
+
+  //   if(!breakOuter) {
+  //     console.log("IS NOT PROPER LOOP)
+  //      break
+  //   }
+
+  // conse.log("sorred order: ", sortedOrder)
 
 
   newHandlesObj.mainHandle = mainHandle
-//  newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj.handles)
+  newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj.handles)
   console.log("handles: ", newHandlesObj.handles)
 
-
-
-
-
-
-  var fc = []
-  for(var i = 0; i < bunny.positions.length; ++i) {
-    fc[i] = 0
-  }
-
-  for(var i = 0; i < newHandlesObj.handles.length; ++i) {
-    var e = newHandlesObj.handles[i]
-    fc[e]++
-    if(fc > 1) {
-      console.log("THIS IS BAD")
-    }
-  }
-
-
-
   return newHandlesObj
+  */
 }
 
 function createParagraph (elem, text) {
@@ -399,7 +430,7 @@ setTimeout(loop, 0)
 function executeRest() {
 
   console.log("DONE LOADING")
-//  handlesObjArr.push(makeHandlesObj(675))
+  //  handlesObjArr.push(makeHandlesObj(675))
   handlesObjArr.push(makeHandlesObj(1263)) // 639, 1625, 1263(good)
 
 
@@ -463,6 +494,117 @@ function executeRest() {
 
   var bunnyNormals = normals(bunny.cells, bunny.positions)
 
+  var newCells = []
+  console.log("about to run loop: ", bunny.cells.length)
+  console.log("about to run loop: ", handlesObjArr[0].handles.length)
+
+  console.log("about to run loop: ", bunny.cells)
+
+
+
+  for(var i = 0; i < bunny.cells.length; ++i) {
+    var t = bunny.cells[i]
+
+    var shouldAdd = false
+
+    var handlesObj = handlesObjArr[0]
+
+
+    if(!(bunny.positions[t[0]][1] < -0.15)) {
+
+      //      console.log("for tri: ", t)
+      //  console.log("handlesObj: ", handlesObj.handles)
+
+
+      for(var j = 0; j < handlesObj.handles.length; ++j) {
+
+        //var handle = bunny.positions[handlesObj.handles[i]]
+        var p = handlesObj.handles[j]
+
+
+
+        if(t[0] === p || t[1] === p || t[2] === p) {
+          console.log("ITS TRUE")
+          shouldAdd = true
+          break
+        }
+
+      }
+
+
+
+    } else {
+      shouldAdd = false
+    }
+
+
+    if(shouldAdd)
+      newCells.push(t)
+
+  }
+
+  function sort(e) {
+    if(e[0] < e[1]) {
+      return [e[0], e[1]]
+    } else {
+      return [e[1], e[0]]
+    }
+  }
+
+  var outputStr = "graph G {\n"
+  var myset = {}
+  for(var i = 0; i < newCells.length; ++i) {
+
+    var t = newCells[i]
+    for(var j = 0; j < 3; j++) {
+      var e0 = t[(j + 0) % 3]
+      var e1 = t[(j + 1) % 3]
+
+      myset[sort([e0, e1])] = true
+
+    }
+  }
+
+  console.log("myset: ", myset)
+  for (var key in myset) {
+    var s = key.split(',')
+    outputStr += s[0] + " -- " + s[1] + ";\n"
+
+  }
+
+
+  outputStr += "}"
+  console.log("output graphs: \n", outputStr)
+
+  /*
+    bunny.cells = newCells
+    console.log("cells: ", newCells)
+    var p = bunny.positions[1081]
+
+
+
+    for(var j = 0; j < handlesObj.handles.length; ++j) {
+    var hp = bunny.positions[handlesObj.handles[j]]
+
+    var dx = hp[0] - p[0]
+    var dy = hp[1] - p[1]
+    var dz = hp[2] - p[2]
+
+    var dist = Math.sqrt(dx*dx + dy*dy + dz*dz) * 100.0
+
+    hp[1] = p[1]
+
+    hp[0] *= dist
+    hp[2] *= dist
+
+
+
+    }
+  */
+
+  // 1081
+
+
   var drawBunny = regl({
     vert: `
     precision mediump float;
@@ -513,8 +655,8 @@ function executeRest() {
   })
 
   var bunnyLines =  require("gl-wireframe")(bunny.cells)
-//  var bunnyLines = bunnyLines2
-  var drawBunnyLines = regl({
+  //  var bunnyLines = bunnyLines2
+/*  var drawBunnyLines = regl({
     vert: `
     precision mediump float;
     attribute vec3 position;
@@ -571,7 +713,7 @@ function executeRest() {
     elements: bunnyLines2,
     primitive: 'lines'
   })
-
+*/
   // function for deforming the current handle.
   function doDeform(offset) {
 
@@ -618,8 +760,8 @@ function executeRest() {
 
     positionBuffer.subdata(bunny.positions)
   }
-  //doDeform([+0.0, +0.0, 0.0])
-      positionBuffer.subdata(bunny.positions)
+  doDeform([+0.0, +0.0, 0.0])
+  positionBuffer.subdata(bunny.positions)
 
   /*
     Setup camera.
@@ -789,7 +931,7 @@ function executeRest() {
 
 
   for(var i = 0; i < handlesObjArr.length; ++i) {
-        var ho = handlesObjArr[i]
+    var ho = handlesObjArr[i]
 
     var hp = bunny.positions[ho.mainHandle] // handle position
   }
@@ -919,61 +1061,56 @@ function executeRest() {
     })
 
     globalScope( () => {
-     drawBunny()
-      drawBunnyLines2()
-      drawBunnyLines()
-
+      drawBunny()
+//      drawBunnyLines2()
+//      drawBunnyLines()
 
       if(handlesObj != null) {
 
-          for(var i = 0; i < handlesObj.handles.length; ++i) {
+        for(var i = 0; i < handlesObj.handles.length; ++i) {
           //      if(i != 3) continue
           var handle = bunny.positions[handlesObj.handles[i]]
 
-            var c
+          var c
 
-            if(i > handlesObj.afterHandlesMore) { // 3
-              c = [1.0, 0.0, 0.0]
+          if(i > handlesObj.afterHandlesMore) { // 3
+            c = [1.0, 0.0, 0.0]
 
-            } else if(i > handlesObj.afterHandles){
-//              continue
-          c = [0.0, 1.0, 0.0]
+          } else if(i > handlesObj.afterHandles){
+            //              continue
+            c = [0.0, 1.0, 0.0]
 
-            } else {
-              //              continue
+          } else {
+            //              continue
 
             var c = [0.0, 0.0, 1.0]
 
           }
 
-            if(i == 27) {
-//              drawHandle({pos: handle, color: c})
-    //          console.log("i: ", handlesObj.handles[i])
-            }
-          }
+          drawHandle({pos: handle, color: c})
+          //          console.log("i: ", handlesObj.handles[i])
+        }
       }
-
-
 
       // render handles
       if(renderHandles) {
-      for(var i = 0; i < handlesObjArr.length; ++i) {
+        for(var i = 0; i < handlesObjArr.length; ++i) {
 
-      var mh = handlesObjArr[i].mainHandle
-      var handle = bunny.positions[mh]
+          var mh = handlesObjArr[i].mainHandle
+          var handle = bunny.positions[mh]
 
-      var c = [0.0, 0.0, 1.0]
+          var c = [0.0, 0.0, 1.0]
 
-      if(handlesObjArr[i] == handlesObj)
-      var c = [0.0, 1.0, 0.0]
+          if(handlesObjArr[i] == handlesObj)
+            var c = [0.0, 1.0, 0.0]
 
-//      drawHandle({pos: handle, color: c})
+          //     drawHandle({pos: handle, color: c})
 
-      }
+        }
       }
 
       for(var i = 0; i < drawTexts.length; ++i) {
-        drawTexts[i]()
+//        drawTexts[i]()
 
       }
     })
@@ -1023,3 +1160,18 @@ function executeRest() {
 
   })
 }
+
+  /*
+    var fc = []
+    for(var i = 0; i < bunny.positions.length; ++i) {
+    fc[i] = 0
+    }
+
+    for(var i = 0; i < newHandlesObj.handles.length; ++i) {
+    var e = newHandlesObj.handles[i]
+    fc[e]++
+    if(fc > 1) {
+    console.log("THIS IS BAD")
+    }
+    }
+  */
