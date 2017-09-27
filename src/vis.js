@@ -506,47 +506,6 @@ function executeRest() {
 
 
 
-  for(var i = 0; i < bunny.cells.length; ++i) {
-    var t = bunny.cells[i]
-
-    var shouldAdd = false
-
-    var handlesObj = handlesObjArr[0]
-
-
-    if(!(bunny.positions[t[0]][1] < -0.15)) {
-
-      //      console.log("for tri: ", t)
-      //  console.log("handlesObj: ", handlesObj.handles)
-
-
-      for(var j = 0; j < handlesObj.handles.length; ++j) {
-
-        //var handle = bunny.positions[handlesObj.handles[i]]
-        var p = handlesObj.handles[j]
-
-
-
-        if(t[0] === p || t[1] === p || t[2] === p) {
-          console.log("ITS TRUE")
-          shouldAdd = true
-          break
-        }
-
-      }
-
-
-
-    } else {
-      shouldAdd = false
-    }
-
-
-    if(shouldAdd)
-      newCells.push(t)
-
-  }
-
   function sort(e) {
     if(e[0] < e[1]) {
       return [e[0], e[1]]
@@ -554,60 +513,6 @@ function executeRest() {
       return [e[1], e[0]]
     }
   }
-
-  var outputStr = "graph G {\n"
-  var myset = {}
-  for(var i = 0; i < newCells.length; ++i) {
-
-    var t = newCells[i]
-    for(var j = 0; j < 3; j++) {
-      var e0 = t[(j + 0) % 3]
-      var e1 = t[(j + 1) % 3]
-
-      myset[sort([e0, e1])] = true
-
-    }
-  }
-
-  console.log("myset: ", myset)
-  for (var key in myset) {
-    var s = key.split(',')
-    outputStr += s[0] + " -- " + s[1] + ";\n"
-
-  }
-
-
-  outputStr += "}"
-  console.log("output graphs: \n", outputStr)
-
-  /*
-    bunny.cells = newCells
-    console.log("cells: ", newCells)
-    var p = bunny.positions[1081]
-
-
-
-    for(var j = 0; j < handlesObj.handles.length; ++j) {
-    var hp = bunny.positions[handlesObj.handles[j]]
-
-    var dx = hp[0] - p[0]
-    var dy = hp[1] - p[1]
-    var dz = hp[2] - p[2]
-
-    var dist = Math.sqrt(dx*dx + dy*dy + dz*dz) * 100.0
-
-    hp[1] = p[1]
-
-    hp[0] *= dist
-    hp[2] *= dist
-
-
-
-    }
-  */
-
-  // 1081
-
 
   var drawBunny = regl({
     vert: `
@@ -749,6 +654,7 @@ function executeRest() {
       ++j
     }
 
+    console.log("deform: ", offset)
     // deform.
     var d = handlesObj.doDeform(arr, bunny.positions)
 
