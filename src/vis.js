@@ -460,7 +460,11 @@ function executeRest() {
     {type: 'button', label: 'Reset Mesh', action: function () {
       bunny = JSON.parse(JSON.stringify(copyBunny))
       var handlesObj = handlesObjArr[0]
-      doDeform([+0.0, +0.0, 0.0])
+      //      doDeform([+0.0, +0.0, 0.0])
+//      bunny.positions[0][0] += 1000.0
+
+  positionBuffer.subdata(bunny.positions)
+      console.log("RESET MESH")
     }},
   ],
                       {theme: 'light', position: 'top-right'}
@@ -730,9 +734,9 @@ function executeRest() {
 
     var j = 0
     for(var i = 0; i < (handlesObj.afterHandles); ++i) {
-      arr[j][0] = bunny.positions[handlesObj.handles[i]][0]
-      arr[j][1] = bunny.positions[handlesObj.handles[i]][1]
-      arr[j][2] = bunny.positions[handlesObj.handles[i]][2]
+      arr[j][0] = bunny.positions[handlesObj.handles[i]][0]  + offset[0]
+      arr[j][1] = bunny.positions[handlesObj.handles[i]][1]  + offset[1]
+      arr[j][2] = bunny.positions[handlesObj.handles[i]][2]  + offset[2]
 
       ++j
     }
@@ -972,7 +976,7 @@ function executeRest() {
 
   var prevPos = null
   var prevMousePos = null
-  //  canvas.addEventListener('mousedown', mousedown, false)
+  canvas.addEventListener('mousedown', mousedown, false)
 
   /*
     When clicking mouse, pick handle that is near enough to mouse, and closest to the camera.
@@ -1009,7 +1013,7 @@ function executeRest() {
         }
       }
       //    handlesObj = handlesObjArr[minI]
-
+//      console.log("PRESSING")
       if(candidates.length > 0) {
         var minDist = 100000.0
         var minI = -1

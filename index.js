@@ -210,10 +210,7 @@ module.exports = function (cells, positions, handlesObj) {
       if(d > 0.00001) {
       console.log("diff: ", d)
       }
-
-
     }
-
 
     //solve(b, x)
     for(var i = 0; i < y.length; ++i) {
@@ -227,7 +224,11 @@ module.exports = function (cells, positions, handlesObj) {
 
 
     var ret = llt.solvePositiveDefinite(z)
-//    var x = solve(y)
+    //    var x = solve(y)
+
+
+
+    //mmtMat * ret should be y.
 
     for (var d = 0; d < 3; ++d) {
       for (var i = 0; i < handlesObj.handles.length; ++i) {
@@ -243,3 +244,13 @@ module.exports = function (cells, positions, handlesObj) {
 
   }
 }
+
+
+
+/*
+first, see if we actually have a solution.
+
+compute condition number of matrix.
+
+then, switch to better mesh.
+*/
