@@ -32,14 +32,29 @@ function comparePair (a, b) {
   return a[0] - b[0] || a[1] - b[1]
 }
 
+module.exports = function (cells, positions, handlesObj) {
+  var N = handlesObj.handles.length*3
 
-module.exports = function (cells, positions, handleIds) {
-  var N = positions.length*3
-  var M = N + handleIds.length*3
+  var numHandles = handlesObj.afterHandles - 0
+  var numStationary = handlesObj.handles.length - handlesObj.afterHandlesMore
+
+
+  // TODO: what should this be?
+  // should be number of static and handles vertices.
+  var M = N + (numHandles + numStationary)*3
 
   var trace = new Float64Array(N)
 
-  var coeffs = calcLaplacian(cells, positions, trace)
+  // maps from handlesids 1800,1702,... to 0, 1,...
+  var handlesMap = {}
+  var invHandlesMap = {}
+  for(var i = 0; i < handlesObj.handles.length; ++i) {
+    handlesMap[handlesObj.handles[i]] = i
+    invHandlesMap[i] = handlesObj.handles[i]
+  }
+
+  // create matrix that allows you to get laplacian coordinates of all
+  var coeffs = calcLaplacian(cells, positions, trace, handlesObj, handlesMap)
   //  console.log("coeffs: ", coeffs)
   console.log("real: ", coeffs)
 
@@ -62,8 +77,8 @@ module.exports = function (cells, positions, handleIds) {
   var c = 0
 
   for (var d = 0; d < 3; ++d) {
-    for (var i = 0; i < positions.length; ++i) {
-      flattened[c++] = positions[i][d]
+    for (var i = 0; i < handlesObj.handles.length; ++i) {
+      flattened[c++] = positions[handlesObj.handles[i]][d]
     }
   }
 
@@ -71,7 +86,7 @@ module.exports = function (cells, positions, handleIds) {
 
 
   // all right, got the delta coords. now use the delta coords to calculate the REAL matrix!
-  var coeffsReal = calcLaplacianReal(cells, positions, trace, delta)
+  var coeffsReal = calcLaplacianReal(cells, positions, trace, delta, handlesObj, invHandlesMap, handlesMap)
 /*
   for(var i = 0; i < coeffsReal.length; ++i) {
 
@@ -80,13 +95,22 @@ module.exports = function (cells, positions, handleIds) {
 
   console.log("eric: ", coeffsReal)
 
-  // augment matrix
-  var P = positions.length
-  for (var i = 0; i < handleIds.length; ++i) {
-    coeffsReal.push([i*3 + N + 0, handleIds[i] + 0 * P, 1])
-    coeffsReal.push([i*3 + N + 1, handleIds[i] + 1 * P, 1])
-    coeffsReal.push([i*3 + N + 2, handleIds[i] + 2 * P, 1])
+  // add handles.
+  var P = handlesObj.handles.length
+  for (var i = 0; i < handlesObj.afterHandles; ++i) {
+    coeffsReal.push([i*3 + N + 0, handlesMap[handlesObj.handles[i]] + 0 * P, 1])
+    coeffsReal.push([i*3 + N + 1, handlesMap[handlesObj.handles[i]] + 1 * P, 1])
+    coeffsReal.push([i*3 + N + 2, handlesMap[handlesObj.handles[i]] + 2 * P, 1])
   }
+
+  // add stationary.
+  for (var i = handlesObj.afterHandlesMore; i < handlesObj.handles.length; ++i) {
+    coeffsReal.push([(i-handlesObj.afterHandlesMore)*3 + N + 0 + handlesObj.afterHandles*3, handlesMap[handlesObj.handles[i]] + 0 * P, 1])
+    coeffsReal.push([(i-handlesObj.afterHandlesMore)*3 + N + 1 + handlesObj.afterHandles*3, handlesMap[handlesObj.handles[i]] + 1 * P, 1])
+    coeffsReal.push([(i-handlesObj.afterHandlesMore)*3 + N + 2 + handlesObj.afterHandles*3, handlesMap[handlesObj.handles[i]] + 2 * P, 1])
+  }
+
+  // this thing, times x(our desired solution) should be b.
   var augMat = CSRMatrix.fromList(coeffsReal, M, N)
 
   var coeffsRealTrans = []
@@ -96,11 +120,12 @@ module.exports = function (cells, positions, handleIds) {
   }
   coeffsRealTrans.sort(comparePair)
 
-
   var augMatTrans = CSRMatrix.fromList(coeffsRealTrans, N, M)
 
   // calculate square matrix
   var mmt = csrgemtm(augMatTrans, augMatTrans)
+  var mmtMat = CSRMatrix.fromList(mmt, N, N)
+
   // calculate preconditioner
   var pi = cmprecond(mmt, N)
 
@@ -119,7 +144,6 @@ module.exports = function (cells, positions, handleIds) {
   // precalculate solver
   //  var solve = qrSolve.prepare(coeffsReal, M, N)
 
-
   var b = new Float64Array(M)
   var x = new Float64Array(N)
   var y = new Float64Array(N)
@@ -127,18 +151,43 @@ module.exports = function (cells, positions, handleIds) {
   var out = new Float64Array(N)
   var z= DenseMatrix.zeros(N)
 
-  return function (handlePositions) {
+  var testing = new Float64Array(M)
+  var testing2 = new Float64Array(N)
+
+
+  return function (handlePositions, outPositions) {
+
+
+    console.log("rows: ", augMat.rowCount)
+    console.log("cols: ", augMat.columnCount)
+
+    augMat.apply(flattened, testing)
+
+    for(var i = 0; i < handlePositions.length; ++i) {
+
+      var d
+
+      d = Math.abs(testing[i*3 + 0 +  3* (handlesObj.handles.size) ] - handlePositions[i][0])
+      if(d > 0.00001) {
+        console.log("x wrong diff at diff: ", i, "diff is ", d)
+      }
+
+
+      d = Math.abs(testing[i*3 + 1 +  3* (handlesObj.handles.size) ] - handlePositions[i][1])
+      if(d > 0.00001) {
+        console.log("y wrong diff at diff: ", i, "diff is ", d)
+      }
+
+      d = Math.abs(testing[i*3 + 2 +  3* (handlesObj.handles.size) ] - handlePositions[i][2])
+      if(d > 0.00001) {
+        console.log("y wrong diff at diff: ", i, "diff is ", d)
+      }
+    }
+
+    mmtMat.apply(flattened, testing2)
 
     var count = 0
 
-    /*
-    for (var d = 0; d < 3; ++d) {
-      var lp = delta[d]
-      for (var i = 0; i < N/3; ++i) {
-        b[count++] = lp[i]
-      }
-    }
-    */
     for(var i = 0; i < delta.length; ++i) {
       b[count++] = 0
     }
@@ -151,6 +200,19 @@ module.exports = function (cells, positions, handleIds) {
 
     // multiply left side by augmatTrans.
     augMatTrans.apply(b, y)
+
+
+    // compare testing2 and y
+
+    for(var i = 0; i < testing2.length; ++i) {
+
+      var d = Math.abs(testing2[i] - y[i])
+      if(d > 0.00001) {
+      console.log("diff: ", d)
+      }
+
+
+    }
 
 
     //solve(b, x)
@@ -168,34 +230,16 @@ module.exports = function (cells, positions, handleIds) {
 //    var x = solve(y)
 
     for (var d = 0; d < 3; ++d) {
-      for (var i = 0; i < positions.length; ++i) {
-        out[i * 3 + d] = ret.get(i + d*P, 0) //x[i + d * P]
-      }
-    }
-    /*
-    for (var k = 0; k < N; ++k) {
-      out[3 * k + d] = x[k]
-    }
-    */
+      for (var i = 0; i < handlesObj.handles.length; ++i) {
+        console.log("before: ", i, positions[invHandlesMap[i]][d])
+        console.log("after: ", i, ret.get(i + d*P, 0))
 
-    /*
-    for (var d = 0; d < 3; ++d) {
-      var lp = delta[d]
-      for (var i = 0; i < N; ++i) {
-        b[i] = lp[i]
-      }
-      for (var j = 0; j < handlePositions.length; ++j) {
-        b[j + N] = handlePositions[j][d]
-      }
-      // use conjugate gradient.
-      solve(b, x)
-
-      for (var k = 0; k < N; ++k) {
-        out[3 * k + d] = x[k]
+        positions[invHandlesMap[i]][d] = ret.get(i + d*P, 0)
+//        outPositions[invHandlesMap[i]][d] = 0.0
       }
     }
-    */
 
     return out
+
   }
 }

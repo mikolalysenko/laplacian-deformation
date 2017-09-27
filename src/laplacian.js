@@ -95,22 +95,27 @@ function comparePair (a, b) {
   }
 */
 
-module.exports.calcLaplacian = function (cells, positions, trace) {
+module.exports.calcLaplacian = function (cells, positions, trace, handlesObj, handlesMap) {
   var i
 
+  var ha = handlesObj.handles
+
   var adj = []
-  for(var i = 0; i < positions.length; ++i) {
-    adj[i] = []
+  for(var i = 0; i < ha.length; ++i) {
+    adj[handlesMap[ha[i]]] = []
   }
 
   for(var i = 0; i < cells.length; ++i) {
     var c = cells[i]
     for(var j = 0; j < 3; ++j) {
-      var a = c[j+0]
-      var b = c[(j+1) % 3]
-      adj[a].push(b)
+      var a = handlesMap[c[j+0]]
+      var b = handlesMap[c[(j+1) % 3]]
+      if(a !== undefined && b !== undefined) {
+        adj[a].push(b)
+      }
     }
   }
+
 /*
 
   for(var i = 0; i < positions.length; ++i) {
@@ -207,8 +212,7 @@ module.exports.calcLaplacian = function (cells, positions, trace) {
   }
 */
 
-
-  var N = positions.length*3
+  var N = ha.length*3
 
 //  console.log("BREAK HERE")
   var buf = new Float64Array(N)
@@ -222,14 +226,14 @@ module.exports.calcLaplacian = function (cells, positions, trace) {
 
     buf[i] = 1
 
-    var d = Math.floor(i / positions.length)
+    var d = Math.floor(i / ha.length)
 
-    var k = i - d * positions.length
+    var k = i - d * ha.length
 
     var w = -1.0 / adj[k].length
 
     for(var j = 0; j < adj[k].length; ++j) {
-      buf[d * positions.length +  adj[k][j]  ] = w
+      buf[d * ha.length +  adj[k][j]  ] = w
     }
 
     for(var j = 0; j < N; ++j) {
@@ -249,27 +253,31 @@ module.exports.calcLaplacian = function (cells, positions, trace) {
   return result
 }
 
-module.exports.calcLaplacianReal = function (cells, positions, trace, delta) {
+module.exports.calcLaplacianReal = function (cells, positions, trace, delta, handlesObj, invHandlesMap, handlesMap) {
   var i
 //  console.log("begin calc real laplacina")
 
+  var ha = handlesObj.handles
+
   var adj = []
-  for(var i = 0; i < positions.length; ++i) {
-    adj[i] = []
+  for(var i = 0; i < ha.length; ++i) {
+    adj[handlesMap[ha[i]]] = []
   }
 
   for(var i = 0; i < cells.length; ++i) {
     var c = cells[i]
     for(var j = 0; j < 3; ++j) {
-      var a = c[j+0]
-      var b = c[(j+1) % 3]
-      adj[a].push(b)
+      var a = handlesMap[c[j+0]]
+      var b = handlesMap[c[(j+1) % 3]]
+      if(a !== undefined && b !== undefined) {
+        adj[a].push(b)
+      }
     }
   }
 
   var Ts = []
 
-  for(var i = 0; i < positions.length; ++i) {
+  for(var i = 0; i < handlesObj.afterHandlesMore; ++i) {
     // compute transform T_i
 
     At_coeffs = []
@@ -287,15 +295,13 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta) {
       At[row] = []
       for(var col = 0; col < inset.length*3; ++col) {
         At[row][col] = 0
-
       }
-
     }
 
     for(var j = 0; j < inset.length; ++j) {
       var k = inset[j]
 
-      var vk = positions[k]
+      var vk = positions[invHandlesMap[k]]
       const x = 0
       const y = 1
       const z = 2
@@ -362,7 +368,7 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta) {
     var y = 0
     for (var o = 0; o < inset.length; ++o) {
       //        for (var d = 0; d < 3; ++d) {
-      var d = inset[o]
+      var d = invHandlesMap[inset[o]]
       testv[y++] = positions[d][0]
       testv[y++] = positions[d][1]
       testv[y++] = positions[d][2]
@@ -402,7 +408,7 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta) {
 //  console.log("check here")
 
 
-  var N = positions.length*3
+  var N = handlesObj.handles.length*3
 
 //  console.log("BREAK HERE")
   var buf = new Float64Array(N)
@@ -414,24 +420,30 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta) {
       buf[j] = 0
     }
 
+
+
     // TODO: is this really correct? compare with the of calcLaplacian()
     buf[i] = 1
 
     // coordinate component. x=0, y=1, z=1
-    var d = Math.floor(i / positions.length)
+    var d = Math.floor(i / handlesObj.handles.length)
 
     // vertex number.
-    var k = i - d * positions.length
+    var k = i - d * handlesObj.handles.length
+
+    if(k >= handlesObj.afterHandlesMore) {
+      continue // static vertex, so we specify no information.
+    }
 
     var w = -1.0 / adj[k].length
 
     for(var j = 0; j < adj[k].length; ++j) {
-      buf[d * positions.length +  adj[k][j]  ] = w
+      buf[d * handlesObj.handles.length +  adj[k][j]  ] = w
     }
 
-    var dx = delta[k + positions.length * 0]
-    var dy = delta[k + positions.length * 1]
-    var dz = delta[k + positions.length * 2]
+    var dx = delta[k + handlesObj.handles.length * 0]
+    var dy = delta[k + handlesObj.handles.length * 1]
+    var dz = delta[k + handlesObj.handles.length * 2]
 
     var b = []
     b.push(k) // TODO: wait a minute, should i really be here!?!?!
@@ -459,10 +471,10 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta) {
 
         // buf is xxxxxyyyyyzzz
         // but s, h3,... are xyzxyzxyz
-        buf[p * positions.length + r] -= dx * (+s[j])
-        buf[p * positions.length + r] -= dy * (-h3[j])
-        buf[p * positions.length + r] -= dz * (+h2[j])
-        buf[p * positions.length + r] -= 1  * (+tx[j])
+        buf[p * handlesObj.handles.length + r] -= dx * (+s[j])
+        buf[p * handlesObj.handles.length + r] -= dy * (-h3[j])
+        buf[p * handlesObj.handles.length + r] -= dz * (+h2[j])
+        buf[p * handlesObj.handles.length + r] -= 1  * (+tx[j])
       }
     } else if(d == 1) { // y case.
       for(var j = 0; j < T[0].length; ++j) {
@@ -470,10 +482,10 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta) {
         var q = Math.floor(j / 3)
         var r = b[q] // set member vertex index.
 
-        buf[p * positions.length + r] -= dx * (+h3[j])
-        buf[p * positions.length + r] -= dy * (+s[j])
-        buf[p * positions.length + r] -= dz * (-h1[j])
-        buf[p * positions.length + r] -= 1  * (+ty[j])
+        buf[p * handlesObj.handles.length + r] -= dx * (+h3[j])
+        buf[p * handlesObj.handles.length + r] -= dy * (+s[j])
+        buf[p * handlesObj.handles.length + r] -= dz * (-h1[j])
+        buf[p * handlesObj.handles.length + r] -= 1  * (+ty[j])
       }
     } else if(d == 2) { // y case.
       for(var j = 0; j < T[0].length; ++j) {
@@ -481,10 +493,10 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta) {
         var q = Math.floor(j / 3)
         var r = b[q] // set member vertex index.
 
-        buf[p * positions.length + r] -= dx * (-h2[j])
-        buf[p * positions.length + r] -= dy * (+h1[j])
-        buf[p * positions.length + r] -= dz * (+s[j])
-        buf[p * positions.length + r] -= 1  * (+tz[j])
+        buf[p * handlesObj.handles.length + r] -= dx * (-h2[j])
+        buf[p * handlesObj.handles.length + r] -= dy * (+h1[j])
+        buf[p * handlesObj.handles.length + r] -= dz * (+s[j])
+        buf[p * handlesObj.handles.length + r] -= 1  * (+tz[j])
       }
     }
 

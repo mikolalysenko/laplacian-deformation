@@ -180,7 +180,7 @@ var bunnyLines2 = []
 // The function will deform the vertex with index mainHandle, and
 // vertices that are close enough it.
 function makeHandlesObj(mainHandle) {
-
+/*
     var newHandlesObj = {
     handles: []
   }
@@ -208,14 +208,14 @@ function makeHandlesObj(mainHandle) {
     }
   }
 
-  newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj.handles)
+//  newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj.handles)
   newHandlesObj.mainHandle = mainHandle
   return newHandlesObj
 
+*/
 
 
 
-  /*
   var newHandlesObj = {
     handles: []
   }
@@ -327,14 +327,14 @@ function makeHandlesObj(mainHandle) {
   // var e = sv.shift()
   // sortedOrder.push(e)
 
-  // var bunnyLines =  require("gl-wireframe")(bunny.cells)
-  // for(var i = 0; i < bunnyLines.length; i+=2) {
-  //   var f = [bunnyLines[i+0], bunnyLines[i+1]]
-  //   if(f[0] == e || f[1] == e) {
-  //     //      console.log("LIST: ", f)
-  //     bunnyLines2.push(f)
-  //   }
-  // }
+  var bunnyLines =  require("gl-wireframe")(bunny.cells)
+  for(var i = 0; i < bunnyLines.length; i+=2) {
+    var f = [bunnyLines[i+0], bunnyLines[i+1]]
+    if(f[0] == e || f[1] == e) {
+      //      console.log("LIST: ", f)
+      bunnyLines2.push(f)
+    }
+  }
 
   // // verify that it is an actual loop.
   // while(sv.length > 0) {
@@ -367,11 +367,11 @@ function makeHandlesObj(mainHandle) {
 
 
   newHandlesObj.mainHandle = mainHandle
-  newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj.handles)
+  newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj)
   console.log("handles: ", newHandlesObj.handles)
 
   return newHandlesObj
-  */
+
 }
 
 function createParagraph (elem, text) {
@@ -655,8 +655,8 @@ function executeRest() {
   })
 
   var bunnyLines =  require("gl-wireframe")(bunny.cells)
-  //  var bunnyLines = bunnyLines2
-/*  var drawBunnyLines = regl({
+  var bunnyLines = bunnyLines
+  var drawBunnyLines = regl({
     vert: `
     precision mediump float;
     attribute vec3 position;
@@ -713,50 +713,49 @@ function executeRest() {
     elements: bunnyLines2,
     primitive: 'lines'
   })
-*/
+
   // function for deforming the current handle.
   function doDeform(offset) {
 
+    var numHandles = handlesObj.afterHandles - 0
+    var numStationary = handlesObj.handles.length - handlesObj.afterHandlesMore
+
     if(!handlesObj)
       return
+
     var arr = []
-    for(var i = 0; i < handlesObj.handles.length; ++i) {
+    for(var i = 0; i < (numHandles + numStationary); ++i) {
       arr[i] = []
     }
-    var arr = []
 
-    for(var i = 0; i < handlesObj.handles.length; ++i) {
-      var hi = handlesObj.handles[i]
+    var j = 0
+    for(var i = 0; i < (handlesObj.afterHandles); ++i) {
+      arr[j][0] = bunny.positions[handlesObj.handles[i]][0]
+      arr[j][1] = bunny.positions[handlesObj.handles[i]][1]
+      arr[j][2] = bunny.positions[handlesObj.handles[i]][2]
 
-      // these handles are deformed.
-      if(i < handlesObj.afterHandles
-        ) {
-        arr[i] = [
-          bunny.positions[hi][0] + offset[0],
-          bunny.positions[hi][1] + offset[1],
-          bunny.positions[hi][2] + offset[2]
-        ]
+      ++j
+    }
 
-        // and these ones are not moved at all.
-        // they serve as anchors, that nail down the mesh.
-      } else {
-        arr[i] = [
-          bunny.positions[hi][0],
-          bunny.positions[hi][1],
-          bunny.positions[hi][2]
-        ]
-      }
+    for(var i = handlesObj.afterHandlesMore; i < (handlesObj.handles.length); ++i) {
+      arr[j][0] = bunny.positions[handlesObj.handles[i]][0]
+      arr[j][1] = bunny.positions[handlesObj.handles[i]][1]
+      arr[j][2] = bunny.positions[handlesObj.handles[i]][2]
+
+      ++j
     }
 
     // deform.
-    var d = handlesObj.doDeform(arr)
+    var d = handlesObj.doDeform(arr, bunny.positions)
 
+    /*
     // now assign the deformed vertices to the mesh.
     for(var i = 0; i < bunny.positions.length; ++i) {
       bunny.positions[i][0] = d[i*3 + 0]
       bunny.positions[i][1] = d[i*3 + 1]
       bunny.positions[i][2] = d[i*3 + 2]
     }
+    */
 
     positionBuffer.subdata(bunny.positions)
   }
@@ -1062,8 +1061,8 @@ function executeRest() {
 
     globalScope( () => {
       drawBunny()
-//      drawBunnyLines2()
-//      drawBunnyLines()
+      drawBunnyLines2()
+      drawBunnyLines()
 
       if(handlesObj != null) {
 
