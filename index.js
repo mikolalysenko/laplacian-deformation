@@ -32,6 +32,9 @@ function comparePair (a, b) {
 }
 
 module.exports = function (cells, positions, handlesObj) {
+  var ROT_INV = false // rotation invariant algorithm
+
+
   var N = handlesObj.handles.length*3
 
   var numHandles = handlesObj.afterHandles - 0
@@ -64,7 +67,12 @@ module.exports = function (cells, positions, handlesObj) {
   var delta = lapMat.apply(flattened, new Float64Array(N))
 
   // all right, got the delta coords. now use the delta coords to calculate the REAL matrix!
-  var coeffsReal = calcLaplacianReal(cells, positions, trace, delta, handlesObj, invHandlesMap, handlesMap)
+   var coeffsReal
+  if(ROT_INV) {
+    coeffsReal = calcLaplacianReal(cells, positions, trace, delta, handlesObj, invHandlesMap, handlesMap)
+  } else {
+    coeffsReal = coeffs
+  }
 
   // add handles.
   var P = handlesObj.handles.length
@@ -113,7 +121,6 @@ module.exports = function (cells, positions, handlesObj) {
 
   return function (handlePositions, outPositions) {
 
-
     /*
 
   var testing = new Float64Array(M)
@@ -159,7 +166,11 @@ module.exports = function (cells, positions, handlesObj) {
     var count = 0
 
     for(var i = 0; i < delta.length; ++i) {
-      b[count++] = 0
+      if(ROT_INV) {
+        b[count++] = 0
+      } else {
+        b[count++] = delta[i]
+      }
     }
 
     for (var j = 0; j < handlePositions.length; ++j) {
