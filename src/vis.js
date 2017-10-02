@@ -3,6 +3,8 @@ const mat4 = require('gl-mat4')
 const vec3 = require('gl-vec3')
 var control = require('control-panel')
 var bunny = require('bunny')
+//var bunny = require('../mybunny')
+
 const fit = require('canvas-fit')
 var ch = require('conway-hart')
 var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
@@ -167,9 +169,23 @@ for(var i = 0; i < bunny.positions.length; ++i) {
 
 for(var i = 0; i < bunny.cells.length; ++i) {
   var c = bunny.cells[i]
+//  console.log("i: ", i)
   for(var j = 0; j < 3; ++j) {
     var a = c[j+0]
     var b = c[(j+1) % 3]
+
+/*    if(adj[a] === "undefined") {
+      console.log("BAAAAD")
+    }
+
+    if(i >= 5352) {
+      console.log("j: ", a)
+    }
+
+    if(a > bunny.cells.length || a < 0) {
+      console.log("BAAAAD")
+    }
+*/
     adj[a].push(b)
   }
 }
@@ -180,41 +196,6 @@ var bunnyLines2 = []
 // The function will deform the vertex with index mainHandle, and
 // vertices that are close enough it.
 function makeHandlesObj(mainHandle) {
-/*
-    var newHandlesObj = {
-    handles: []
-  }
-
-  newHandlesObj.handles.push(mainHandle)
-
-  // now we begin adding some more handles.
-  // These handles will NOT be moved during deformation.
-  // Their positions are kept constant, and so they serve as
-  //n anchors that ensures that the mesh keeps it general shape.
-
-  newHandlesObj.afterHandles = newHandlesObj.handles.length
-  for(var j = 0; j < bunny.positions.length; ++j) {
-    var p = bunny.positions[j]
-    var accept = true
-    for(var i = 0; i < newHandlesObj.handles.length; ++i) {
-      if(dist(bunny.positions[newHandlesObj.handles[i]], p) < 0.16) {
-        accept = false
-        break
-      }
-    }
-
-    if(accept) {
-      newHandlesObj.handles.push(j)
-    }
-  }
-
-//  newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj.handles)
-  newHandlesObj.mainHandle = mainHandle
-  return newHandlesObj
-
-*/
-
-
 
   var newHandlesObj = {
     handles: []
@@ -279,7 +260,6 @@ function makeHandlesObj(mainHandle) {
   }
 
   newHandlesObj.afterHandlesMore = newHandlesObj.handles.length
-
 
     // var fc = []
     // for(var i = 0; i < bunny.positions.length; ++i) {
