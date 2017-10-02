@@ -12,26 +12,10 @@ function comparePair (a, b) {
   return a[0] - b[0] || a[1] - b[1]
 }
 
-module.exports.calcLaplacian = function (cells, positions, trace, handlesObj, handlesMap) {
+module.exports.calcLaplacian = function (cells, positions, trace, handlesObj, handlesMap, adj) {
   var i
 
   var ha = handlesObj.handles
-
-  var adj = []
-  for(var i = 0; i < ha.length; ++i) {
-    adj[handlesMap[ha[i]]] = []
-  }
-
-  for(var i = 0; i < cells.length; ++i) {
-    var c = cells[i]
-    for(var j = 0; j < 3; ++j) {
-      var a = handlesMap[c[j+0]]
-      var b = handlesMap[c[(j+1) % 3]]
-      if(a !== undefined && b !== undefined) {
-        adj[a].push(b)
-      }
-    }
-  }
 
   var N = ha.length*3
 
@@ -74,27 +58,11 @@ module.exports.calcLaplacian = function (cells, positions, trace, handlesObj, ha
   return result
 }
 
-module.exports.calcLaplacianReal = function (cells, positions, trace, delta, handlesObj, invHandlesMap, handlesMap) {
+module.exports.calcLaplacianReal = function (cells, positions, trace, delta, handlesObj, invHandlesMap, handlesMap, adj) {
   var i
 //  console.log("begin calc real laplacina")
 
   var ha = handlesObj.handles
-
-  var adj = []
-  for(var i = 0; i < ha.length; ++i) {
-    adj[handlesMap[ha[i]]] = []
-  }
-
-  for(var i = 0; i < cells.length; ++i) {
-    var c = cells[i]
-    for(var j = 0; j < 3; ++j) {
-      var a = handlesMap[c[j+0]]
-      var b = handlesMap[c[(j+1) % 3]]
-      if(a !== undefined && b !== undefined) {
-        adj[a].push(b)
-      }
-    }
-  }
 
   var Ts = []
 
@@ -187,6 +155,9 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta, han
 
     Ts[i] = pseudoinv
 
+
+
+    /*
     var testv = []
     var y = 0
     for (var o = 0; o < inset.length; ++o) {
@@ -197,7 +168,6 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta, han
     }
 
 
-    /*
     var sanitycheck = mathjs.multiply(pseudoinv, testv);
     for(var p = 0; p < sanitycheck.length; ++p) {
       var pass = true
@@ -328,5 +298,5 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta, han
 
   result.sort(comparePair)
 
-  return result
+  return [Ts, result]
 }

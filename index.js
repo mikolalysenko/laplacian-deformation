@@ -4,6 +4,7 @@ var ldl = require('cholesky-solve').prepare
 var calcLaplacian = require('./src/laplacian').calcLaplacian
 var calcLaplacianReal = require('./src/laplacian').calcLaplacianReal
 let li = require("./mylib.js")
+var mathjs = require('mathjs')
 
 let EmscriptenMemoryManager = li.EmscriptenMemoryManager
 let SparseMatrix = li.SparseMatrix
@@ -31,48 +32,8 @@ function comparePair (a, b) {
   return a[0] - b[0] || a[1] - b[1]
 }
 
-module.exports = function (cells, positions, handlesObj) {
-  var ROT_INV = false // rotation invariant algorithm
-
-
-  var N = handlesObj.handles.length*3
-
-  var numHandles = handlesObj.afterHandles - 0
-  var numStationary = handlesObj.handles.length - handlesObj.afterHandlesMore
-
-  var M = N + (numHandles + numStationary)*3
-
-  var trace = new Float64Array(N)
-
-  var handlesMap = {}
-  var invHandlesMap = {}
-  for(var i = 0; i < handlesObj.handles.length; ++i) {
-    handlesMap[handlesObj.handles[i]] = i
-    invHandlesMap[i] = handlesObj.handles[i]
-  }
-
-  var coeffs = calcLaplacian(cells, positions, trace, handlesObj, handlesMap)
-
-  var lapMat = CSRMatrix.fromList(coeffs, N, N)
-
-  var flattened = new Float64Array(N)
-  var c = 0
-
-  for (var d = 0; d < 3; ++d) {
-    for (var i = 0; i < handlesObj.handles.length; ++i) {
-      flattened[c++] = positions[handlesObj.handles[i]][d]
-    }
-  }
-
-  var delta = lapMat.apply(flattened, new Float64Array(N))
-
-  // all right, got the delta coords. now use the delta coords to calculate the REAL matrix!
-   var coeffsReal
-  if(ROT_INV) {
-    coeffsReal = calcLaplacianReal(cells, positions, trace, delta, handlesObj, invHandlesMap, handlesMap)
-  } else {
-    coeffsReal = coeffs
-  }
+// sparse matrix coeffs are in the argument.
+function augmentMatrix(coeffsReal, handlesObj, N, M, handlesMap) {
 
   // add handles.
   var P = handlesObj.handles.length
@@ -111,6 +72,83 @@ module.exports = function (cells, positions, handlesObj) {
   }
   let spars = SparseMatrix.fromTriplet(T)
   let llt = spars.chol()
+  return [llt, augMatTrans]
+}
+
+module.exports = function (cells, positions, handlesObj) {
+  var ROT_INV = true // rotation invariant algorithm
+
+
+  var N = handlesObj.handles.length*3
+
+  var numHandles = handlesObj.afterHandles - 0
+  var numStationary = handlesObj.handles.length - handlesObj.afterHandlesMore
+
+  var M = N + (numHandles + numStationary)*3
+
+  var trace = new Float64Array(N)
+
+  var handlesMap = {}
+  var invHandlesMap = {}
+  for(var i = 0; i < handlesObj.handles.length; ++i) {
+    // map from 1803,1402 to 0,1
+    handlesMap[handlesObj.handles[i]] = i
+
+    // map from 0,1 to 1803,1402
+    invHandlesMap[i] = handlesObj.handles[i]
+
+
+  }
+
+  var ha = handlesObj.handles
+
+  var adj = []
+  for(var i = 0; i < ha.length; ++i) {
+    adj[handlesMap[ha[i]]] = []
+  }
+
+  for(var i = 0; i < cells.length; ++i) {
+    var c = cells[i]
+    for(var j = 0; j < 3; ++j) {
+      var a = handlesMap[c[j+0]]
+      var b = handlesMap[c[(j+1) % 3]]
+      if(a !== undefined && b !== undefined) {
+        adj[a].push(b)
+      }
+    }
+  }
+
+
+  var coeffs = calcLaplacian(cells, positions, trace, handlesObj, handlesMap, adj)
+
+  var lapMat = CSRMatrix.fromList(coeffs, N, N)
+
+  var flattened = new Float64Array(N)
+  var c = 0
+
+  for (var d = 0; d < 3; ++d) {
+    for (var i = 0; i < handlesObj.handles.length; ++i) {
+      flattened[c++] = positions[handlesObj.handles[i]][d]
+    }
+  }
+
+  var delta = lapMat.apply(flattened, new Float64Array(N))
+
+  // all right, got the delta coords. now use the delta coords to calculate the REAL matrix!
+  var coeffsReal
+  var Ts
+  if(ROT_INV) {
+    var a = calcLaplacianReal(cells, positions, trace, delta, handlesObj, invHandlesMap, handlesMap, adj)
+    Ts = a[0]
+    coeffsReal = a[1]
+  } else {
+    coeffsReal = coeffs
+  }
+
+  var a = augmentMatrix(coeffsReal, handlesObj, N, M, handlesMap)
+  var llt = a[0]
+  var augMatTrans = a[1]
+
 
   var b = new Float64Array(M)
   var x = new Float64Array(N)
@@ -120,49 +158,6 @@ module.exports = function (cells, positions, handlesObj) {
   var z= DenseMatrix.zeros(N)
 
   return function (handlePositions, outPositions) {
-
-    /*
-
-  var testing = new Float64Array(M)
-  var testing2 = new Float64Array(N)
-
-  var mmtMat = CSRMatrix.fromList(mmt, N, N)
-
-    augMat.apply(flattened, testing)
-
-    for(var i = 0; i < handlePositions.length; ++i) {
-
-      var d
-
-      d = Math.abs(testing[i*3 + 0 +  3* (handlesObj.handles.size) ] - handlePositions[i][0])
-      if(d > 0.00001) {
-        console.log("x wrong diff at diff: ", i, "diff is ", d)
-      }
-
-
-      d = Math.abs(testing[i*3 + 1 +  3* (handlesObj.handles.size) ] - handlePositions[i][1])
-      if(d > 0.00001) {
-        console.log("y wrong diff at diff: ", i, "diff is ", d)
-      }
-
-      d = Math.abs(testing[i*3 + 2 +  3* (handlesObj.handles.size) ] - handlePositions[i][2])
-      if(d > 0.00001) {
-        console.log("y wrong diff at diff: ", i, "diff is ", d)
-      }
-    }
-
-    mmtMat.apply(flattened, testing2)
-
-    for(var i = 0; i < testing2.length; ++i) {
-
-      var d = Math.abs(testing2[i] - y[i])
-      if(d > 0.00001) {
-      console.log("diff: ", d)
-      }
-    }
-
-    */
-
     var count = 0
 
     for(var i = 0; i < delta.length; ++i) {
@@ -189,16 +184,39 @@ module.exports = function (cells, positions, handlesObj) {
 
     var ret = llt.solvePositiveDefinite(z)
 
-
     for (var d = 0; d < 3; ++d) {
       for (var i = 0; i < handlesObj.handles.length; ++i) {
-    //    console.log("before: ", i, positions[invHandlesMap[i]][d])
-//        console.log("after: ", i, ret.get(i + d*P, 0))
+        //    console.log("before: ", i, positions[invHandlesMap[i]][d])
+        //        console.log("after: ", i, ret.get(i + d*P, 0))
 
-        positions[invHandlesMap[i]][d] = ret.get(i + d*P, 0)
+        positions[invHandlesMap[i]][d] = ret.get(i + d*(N/3), 0)
       }
     }
 
+    if(ROT_INV) {
+      for(var i = 0; i < handlesObj.afterHandlesMore; ++i) {
+        // compute transform T_i
+
+        // set of {i} and N
+        var inset = []
+        inset.push(i)
+        for(var j = 0; j < adj[i].length; ++j) {
+          inset.push(adj[i][j])
+        }
+
+        var v = []
+        for(var j = 0; j < inset.length; ++j) {
+          v.push(positions[invHandlesMap[inset[j]]][0])
+          v.push(positions[invHandlesMap[inset[j]]][1])
+          v.push(positions[invHandlesMap[inset[j]]][2])
+
+        }
+
+        var prod = mathjs.multiply(Ts[i], v)
+
+        //      console.log("prod: ", prod)
+      }
+    }
 
     return out
 
@@ -208,9 +226,9 @@ module.exports = function (cells, positions, handlesObj) {
 
 
 /*
-first, see if we actually have a solution.
+  first, see if we actually have a solution.
 
-compute condition number of matrix.
+  compute condition number of matrix.
 
-then, switch to better mesh.
+  then, switch to better mesh.
 */
