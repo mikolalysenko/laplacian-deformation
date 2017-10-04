@@ -33,7 +33,25 @@ function comparePair (a, b) {
 }
 
 // sparse matrix coeffs are in the argument.
-function augmentMatrix(coeffsReal, handlesObj, N, M, handlesMap) {
+function augmentMatrix(coeffsReal, handlesObj, N, M, handlesMap, is2) {
+
+  var preprocess = []
+
+  if(is2) {
+    // zero out constraints involving static vertices.
+    for(var i = 0; i < coeffsReal.length; ++i) {
+      var e = coeffsReal[i]
+
+      var myi = e[0] % handlesObj.handles.length
+      if(handlesObj.afterHandlesMore > myi) {
+        preprocess.push([e[0], e[1], e[2]])
+      } else {
+        e = e
+      }
+    }
+    preprocess.sort(comparePair)
+    coeffsReal = preprocess
+  }
 
   // add handles.
   var P = handlesObj.handles.length
@@ -56,6 +74,7 @@ function augmentMatrix(coeffsReal, handlesObj, N, M, handlesMap) {
   var coeffsRealTrans = []
   for(var i = 0; i < coeffsReal.length; ++i) {
     var e = coeffsReal[i]
+
     coeffsRealTrans.push([e[1], e[0], e[2]])
   }
   coeffsRealTrans.sort(comparePair)
@@ -72,7 +91,7 @@ function augmentMatrix(coeffsReal, handlesObj, N, M, handlesMap) {
   }
   let spars = SparseMatrix.fromTriplet(T)
   let llt = spars.chol()
-  return [llt, augMatTrans]
+  return [llt, augMatTrans, coeffsReal]
 }
 
 module.exports = function (cells, positions, handlesObj) {
@@ -118,7 +137,6 @@ module.exports = function (cells, positions, handlesObj) {
     }
   }
 
-
   var coeffs = calcLaplacian(cells, positions, trace, handlesObj, handlesMap, adj)
 
   var lapMat = CSRMatrix.fromList(coeffs, N, N)
@@ -145,14 +163,20 @@ module.exports = function (cells, positions, handlesObj) {
     coeffsReal = coeffs
   }
 
-  var a = augmentMatrix(coeffsReal, handlesObj, N, M, handlesMap)
+  var a = augmentMatrix(coeffsReal, handlesObj, N, M, handlesMap, false)
   var llt = a[0]
   var augMatTrans = a[1]
+  var leftsidemat = a[2]
 
+  a = augmentMatrix(coeffs, handlesObj, N, M, handlesMap, true)
+  var llt2 = a[0]
+  var augMatTrans2 = a[1]
+  var leftsidemat2 = a[2]
 
   var b = new Float64Array(M)
   var x = new Float64Array(N)
   var y = new Float64Array(N)
+  var othery = new Float64Array(M)
 
   var out = new Float64Array(N)
   var z= DenseMatrix.zeros(N)
@@ -193,7 +217,54 @@ module.exports = function (cells, positions, handlesObj) {
       }
     }
 
-    if(ROT_INV) {
+/*
+    if(ROT_INV && false) {
+
+      var leftside = CSRMatrix.fromList(leftsidemat, M, N)
+      c = 0
+      for (var d = 0; d < 3; ++d) {
+        for (var i = 0; i < handlesObj.handles.length; ++i) {
+          flattened[c++] = positions[handlesObj.handles[i]][d]
+        }
+      }
+      leftside.apply(flattened, othery)
+      console.log("now lets check")
+      for(var p = 0; p < othery.length; ++p) {
+        if(Math.abs(othery[p] - b[p]) < 0.0001) {
+        } else {
+          console.log("NOOO WRONG: ", p)
+        }
+      }
+
+
+
+
+
+
+
+      c = 0
+      for (var d = 0; d < 3; ++d) {
+        for (var i = 0; i < handlesObj.handles.length; ++i) {
+          flattened[c++] = positions[handlesObj.handles[i]][d]
+        }
+      }
+
+      var solutionDelta = lapMat.apply(flattened, new Float64Array(N))
+
+      var solutionDeltaTrans = []
+      for (var i = 0; i < handlesObj.handles.length; ++i) {
+        //    console.log("before: ", i, positions[invHandlesMap[i]][d])
+        //        console.log("after: ", i, ret.get(i + d*P, 0))
+
+        solutionDeltaTrans[i] = [
+          solutionDelta[i + 0*(N/3)],
+          solutionDelta[i + 1*(N/3)],
+          solutionDelta[i + 2*(N/3)],
+        ]
+      }
+
+      var tempPositions = []
+
       for(var i = 0; i < handlesObj.afterHandlesMore; ++i) {
         // compute transform T_i
 
@@ -209,15 +280,113 @@ module.exports = function (cells, positions, handlesObj) {
           v.push(positions[invHandlesMap[inset[j]]][0])
           v.push(positions[invHandlesMap[inset[j]]][1])
           v.push(positions[invHandlesMap[inset[j]]][2])
-
         }
 
         var prod = mathjs.multiply(Ts[i], v)
 
-        //      console.log("prod: ", prod)
-      }
-    }
+        // prod[0], scale
+        // prod[1], h1
+        // prod[2], h2
+        // prod[3], h3
+        // prod[4], tx
+        // prod[5], ty
+        // prod[6], tz
 
+        var s = prod[0]
+        var h1 = prod[1]
+        var h2 = prod[2]
+        var h3 = prod[3]
+        var tx = prod[4]
+        var ty = prod[5]
+        var tz = prod[6]
+
+        var rcps = 1.0 / s
+        //        var j = invHandlesMap[i]
+
+        var j = i
+
+        if(s > 1.001) {
+//          console.log("PRNT")
+        }
+
+
+//        tempPositions[i] = [rcps*(s * solutionDeltaTrans[j][0] - h3 * solutionDeltaTrans[j][1] + h2 * solutionDeltaTrans[j][2]  + tx ),rcps*(h3 * solutionDeltaTrans[j][0] + s * solutionDeltaTrans[j][1] - h1 * solutionDeltaTrans[j][2] + ty),rcps*(-h2 * solutionDeltaTrans[j][0] + h1 * solutionDeltaTrans[j][1] + s * solutionDeltaTrans[j][2] + tz),]
+
+
+
+
+
+//        tempPositions[i] = [          rcps*solutionDeltaTrans[i][0],  rcps*solutionDeltaTrans[i][1],rcps*solutionDeltaTrans[i][2]]
+
+
+        tempPositions[i] = [solutionDeltaTrans[i][0], solutionDeltaTrans[i][1],solutionDeltaTrans[i][2]]
+
+      }
+
+      for (var d = 0; d < 3; ++d) {
+        var count = 0
+        for (var i = 0; i < handlesObj.afterHandlesMore; ++i) {
+          b[d*handlesObj.handles.length + count++] = tempPositions[i][d]
+        }
+      }
+
+      augMatTrans2.apply(b, y)
+
+      for(var i = 0; i < y.length; ++i) {
+        z.set(y[i], i, 0)
+      }
+
+      var ret = llt2.solvePositiveDefinite(z)
+
+      //  coeffs * positions = y
+
+
+
+
+      var leftside2 = CSRMatrix.fromList(leftsidemat2, M, N)
+      c = 0
+      for (var d = 0; d < 3; ++d) {
+        for (var i = 0; i < handlesObj.handles.length; ++i) {
+          flattened[c++] = positions[handlesObj.handles[i]][d]
+        }
+      }
+
+      // leftside2.apply(flattened, othery)
+      // console.log("now lets check")
+      // for(var p = 0; p < othery.length; ++p) {
+      //   if(Math.abs(othery[p] - b[p]) < 0.0001) {
+      //   } else {
+      //     console.log("NOOO WRONG: ", p)
+      //   }
+      // }
+
+
+
+
+      for (var d = 0; d < 3; ++d) {
+        for (var i = 0; i < handlesObj.handles.length; ++i) {
+          //    console.log("before: ", i, positions[invHandlesMap[i]][d])
+          //        console.log("after: ", i, ret.get(i + d*P, 0))
+
+     //     positions[invHandlesMap[i]][d] = ret.get(i + d*(N/3), 0)
+        }
+      }
+
+
+
+
+      // we should have that
+      // leftside * positions = b
+      // or is it leftside2?
+
+      // compute T * delta, and put on the right side of equation
+      // T is from Ts.
+      // delta is the solution, in delta coordinates
+
+      //      console.log("prod: ", prod)
+
+    }
+*/
     return out
 
   }
