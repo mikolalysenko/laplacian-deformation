@@ -2,8 +2,8 @@ const normals = require('angle-normals')
 const mat4 = require('gl-mat4')
 const vec3 = require('gl-vec3')
 var control = require('control-panel')
-//var bunny = require('bunny')
-var bunny = require('../mytext')
+var bunny = require('bunny')
+//var bunny = require('../mytext')
 //var bunny = require('stanford-dragon/3')
 /*
 for(var j = 0; j < bunny.positions.length; ++j) {
@@ -225,7 +225,7 @@ function makeHandlesObj(mainHandle) {
   console.log("mainHandle: ", mainHandle)
 
   // 60
-  while(newHandlesObj.handles.length < 100) {
+  while(newHandlesObj.handles.length < 10) {
 
     var nextRing = []
 
@@ -252,7 +252,7 @@ function makeHandlesObj(mainHandle) {
 
 
   // 800
-  while(newHandlesObj.handles.length < 2300) {
+  while(newHandlesObj.handles.length < 100) {
 
     var nextRing = []
 
@@ -424,8 +424,8 @@ setTimeout(loop, 0)
 function executeRest() {
 
   console.log("DONE LOADING")
-  //  handlesObjArr.push(makeHandlesObj(675))
-  handlesObjArr.push(makeHandlesObj(17000)) // 639, 1625, 1263(good)
+  handlesObjArr.push(makeHandlesObj(675))
+  //handlesObjArr.push(makeHandlesObj(17000)) // 639, 1625, 1263(good)
 
   // set current handle that we're manipulating.
   var handlesObj = handlesObjArr[0]
@@ -991,7 +991,7 @@ function executeRest() {
 
           }
 
-//          drawHandle({pos: handle, color: c})
+          drawHandle({pos: handle, color: c})
           //          console.log("i: ", handlesObj.handles[i])
         }
       }

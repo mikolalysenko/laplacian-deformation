@@ -95,7 +95,7 @@ function augmentMatrix(coeffsReal, handlesObj, N, M, handlesMap, is2) {
 }
 
 module.exports = function (cells, positions, handlesObj) {
-  var ROT_INV = false // rotation invariant algorithm
+  var ROT_INV = true // rotation invariant algorithm
 
   var N = handlesObj.handles.length*3
 
@@ -150,6 +150,16 @@ module.exports = function (cells, positions, handlesObj) {
   }
 
   var delta = lapMat.apply(flattened, new Float64Array(N))
+
+  var origLengths = []
+  for(var i = 0; i < delta.length/3; ++i) {
+    var ax = delta[i + 0*(N/3)]
+    var ay = delta[i + 1*(N/3)]
+    var az = delta[i + 2*(N/3)]
+
+    var len = Math.sqrt(ax*ax + ay*ay + az*az)
+    origLengths[i] = len
+  }
 
   // all right, got the delta coords. now use the delta coords to calculate the REAL matrix!
   var coeffsReal
@@ -216,9 +226,10 @@ module.exports = function (cells, positions, handlesObj) {
       }
     }
 
-/*
-    if(ROT_INV && false) {
 
+    if(ROT_INV && true) {
+
+     /*
       var leftside = CSRMatrix.fromList(leftsidemat, M, N)
       c = 0
       for (var d = 0; d < 3; ++d) {
@@ -235,7 +246,7 @@ module.exports = function (cells, positions, handlesObj) {
         }
       }
 
-
+*/
 
 
 
@@ -311,14 +322,21 @@ module.exports = function (cells, positions, handlesObj) {
 
 //        tempPositions[i] = [rcps*(s * solutionDeltaTrans[j][0] - h3 * solutionDeltaTrans[j][1] + h2 * solutionDeltaTrans[j][2]  + tx ),rcps*(h3 * solutionDeltaTrans[j][0] + s * solutionDeltaTrans[j][1] - h1 * solutionDeltaTrans[j][2] + ty),rcps*(-h2 * solutionDeltaTrans[j][0] + h1 * solutionDeltaTrans[j][1] + s * solutionDeltaTrans[j][2] + tz),]
 
+/*
+        tempPositions[i] = [          rcps*solutionDeltaTrans[i][0],  rcps*solutionDeltaTrans[i][1],rcps*solutionDeltaTrans[i][2]]
+*/
 
 
+        var ax = solutionDeltaTrans[i][0]
+        var ay = solutionDeltaTrans[i][1]
+        var az = solutionDeltaTrans[i][2]
 
+        var len = Math.sqrt(ax*ax + ay*ay + az*az)
+        var olen = origLengths[i]
+        var s = olen / len
 
-//        tempPositions[i] = [          rcps*solutionDeltaTrans[i][0],  rcps*solutionDeltaTrans[i][1],rcps*solutionDeltaTrans[i][2]]
+        tempPositions[i] = [s*solutionDeltaTrans[i][0], s*solutionDeltaTrans[i][1],s*solutionDeltaTrans[i][2]]
 
-
-        tempPositions[i] = [solutionDeltaTrans[i][0], solutionDeltaTrans[i][1],solutionDeltaTrans[i][2]]
 
       }
 
@@ -367,7 +385,8 @@ module.exports = function (cells, positions, handlesObj) {
           //    console.log("before: ", i, positions[invHandlesMap[i]][d])
           //        console.log("after: ", i, ret.get(i + d*P, 0))
 
-     //     positions[invHandlesMap[i]][d] = ret.get(i + d*(N/3), 0)
+          positions[invHandlesMap[i]][d] = ret.get(i + d*(N/3), 0)
+
         }
       }
 
@@ -385,7 +404,7 @@ module.exports = function (cells, positions, handlesObj) {
       //      console.log("prod: ", prod)
 
     }
-*/
+
     return out
 
   }
