@@ -262,7 +262,7 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta, han
         buf[p * handlesObj.handles.length + r] -= dx * (+s[j])
         buf[p * handlesObj.handles.length + r] -= dy * (-h3[j])
         buf[p * handlesObj.handles.length + r] -= dz * (+h2[j])
-     buf[p * handlesObj.handles.length + r] -= 1  * (+tx[j])
+//     buf[p * handlesObj.handles.length + r] -= 1  * (+tx[j])
       }
     } else if(d == 1) { // y case.
       for(var j = 0; j < T[0].length; ++j) {
@@ -273,7 +273,7 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta, han
         buf[p * handlesObj.handles.length + r] -= dx * (+h3[j])
         buf[p * handlesObj.handles.length + r] -= dy * (+s[j])
         buf[p * handlesObj.handles.length + r] -= dz * (-h1[j])
-        buf[p * handlesObj.handles.length + r] -= 1  * (+ty[j])
+     //   buf[p * handlesObj.handles.length + r] -= 1  * (+ty[j])
       }
     } else if(d == 2) { // y case.
       for(var j = 0; j < T[0].length; ++j) {
@@ -284,7 +284,7 @@ module.exports.calcLaplacianReal = function (cells, positions, trace, delta, han
         buf[p * handlesObj.handles.length + r] -= dx * (-h2[j])
         buf[p * handlesObj.handles.length + r] -= dy * (+h1[j])
         buf[p * handlesObj.handles.length + r] -= dz * (+s[j])
-        buf[p * handlesObj.handles.length + r] -= 1  * (+tz[j])
+//        buf[p * handlesObj.handles.length + r] -= 1  * (+tz[j])
       }
     }
 

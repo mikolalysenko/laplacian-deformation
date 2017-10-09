@@ -95,8 +95,7 @@ function augmentMatrix(coeffsReal, handlesObj, N, M, handlesMap, is2) {
 }
 
 module.exports = function (cells, positions, handlesObj) {
-  var ROT_INV = true // rotation invariant algorithm
-
+  var ROT_INV = false // rotation invariant algorithm
 
   var N = handlesObj.handles.length*3
 

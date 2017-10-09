@@ -2,8 +2,19 @@ const normals = require('angle-normals')
 const mat4 = require('gl-mat4')
 const vec3 = require('gl-vec3')
 var control = require('control-panel')
-var bunny = require('bunny')
-//var bunny = require('../mybunny')
+//var bunny = require('bunny')
+var bunny = require('../mytext')
+//var bunny = require('stanford-dragon/3')
+/*
+for(var j = 0; j < bunny.positions.length; ++j) {
+  if(bunny.positions[j][0] < -45.0) {
+    console.log("index: ", j)
+  } else {
+    bunny.positions[j] = [-100.0, 0.0, 0.0]
+  }
+}
+*/
+
 
 const fit = require('canvas-fit')
 var ch = require('conway-hart')
@@ -11,7 +22,7 @@ var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
 var sphereMesh = require('primitive-sphere')(1.0, { segments: 16 })
 var prepareDeform = require('../index')
 
-var vectorizeText = require("vectorize-text")
+//var vectorizeText = require("vectorize-text")
 
 function revisedONB(n, b1, b2) {
   var b1 = [0.0, 0.0, 0.0]
@@ -32,6 +43,7 @@ function revisedONB(n, b1, b2) {
   }
 }
 
+/*
 function fixCenteredText(str) {
   var complex =  vectorizeText(str, {
     triangles: true,
@@ -76,7 +88,7 @@ function fixCenteredText(str) {
   return complex
 
 }
-
+*/
 
 
 var aabb = {
@@ -211,7 +223,9 @@ function makeHandlesObj(mainHandle) {
   //  console.log("console: ", adj[mainHandle])
 
   console.log("mainHandle: ", mainHandle)
-  while(newHandlesObj.handles.length < 10) {
+
+  // 60
+  while(newHandlesObj.handles.length < 100) {
 
     var nextRing = []
 
@@ -237,8 +251,8 @@ function makeHandlesObj(mainHandle) {
   newHandlesObj.afterHandles = newHandlesObj.handles.length
 
 
-
-  while(newHandlesObj.handles.length < 80) {
+  // 800
+  while(newHandlesObj.handles.length < 2300) {
 
     var nextRing = []
 
@@ -411,8 +425,7 @@ function executeRest() {
 
   console.log("DONE LOADING")
   //  handlesObjArr.push(makeHandlesObj(675))
-  handlesObjArr.push(makeHandlesObj(1263)) // 639, 1625, 1263(good)
-
+  handlesObjArr.push(makeHandlesObj(17000)) // 639, 1625, 1263(good)
 
   // set current handle that we're manipulating.
   var handlesObj = handlesObjArr[0]
@@ -746,7 +759,7 @@ function executeRest() {
   })
 
   // 1263
-
+/*
   var makeDrawtext = function(arg) {
     var itext =arg //1081
 
@@ -776,7 +789,7 @@ function executeRest() {
       str = "0" + str
     }
 
-    var complex = fixCenteredText(str)
+//    var complex = fixCenteredText(str)
 
     return regl({
       vert: `
@@ -817,6 +830,7 @@ function executeRest() {
     })
 
   }
+  */
 
 
   for(var i = 0; i < handlesObjArr.length; ++i) {
@@ -825,13 +839,14 @@ function executeRest() {
     var hp = bunny.positions[ho.mainHandle] // handle position
   }
 
-
+/*
   var drawTexts = []
   var handlesObj = handlesObjArr[0]
   for(var i = 0; i < handlesObj.handles.length; ++i) {
     //var handle = bunny.positions[handlesObj.handles[i]]
     drawTexts.push(makeDrawtext(handlesObj.handles[i]))
   }
+  */
 
 
 
@@ -951,8 +966,8 @@ function executeRest() {
 
     globalScope( () => {
       drawBunny()
-      drawBunnyLines2()
-      drawBunnyLines()
+//      drawBunnyLines2()
+//      drawBunnyLines()
 
       if(handlesObj != null) {
 
@@ -976,7 +991,7 @@ function executeRest() {
 
           }
 
-          drawHandle({pos: handle, color: c})
+//          drawHandle({pos: handle, color: c})
           //          console.log("i: ", handlesObj.handles[i])
         }
       }
@@ -998,10 +1013,12 @@ function executeRest() {
         }
       }
 
+      /*
       for(var i = 0; i < drawTexts.length; ++i) {
 //        drawTexts[i]()
 
       }
+      */
     })
 
     // if the mouse is moved while left mouse-button is down,
