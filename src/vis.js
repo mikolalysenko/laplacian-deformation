@@ -8,11 +8,8 @@ var control = require('control-panel')
 var bunny = require('../bumps_dec.js')
 
 const fit = require('canvas-fit')
-var ch = require('conway-hart')
 var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
-var sphereMesh = require('primitive-sphere')(1.0, { segments: 16 })
 var prepareDeform = require('../index')
-
 
 var aabb = {
   min: [+1000, +1000, +1000],
@@ -132,7 +129,6 @@ var ret = getPoints(cs)
 handles = ret[0]
 var handlesSet = ret[1]
 
-
 for(var i = 0; i < bunny.positions.length; ++i) {
   if(!(stationarySet[i] === true || handlesSet[i] === true)) {
     unconstrained.push(i)
@@ -155,11 +151,6 @@ for(var i = 0; i < bunny.cells.length; ++i) {
     adj[a].push(b)
   }
 }
-
-
-
-
-var bunnyLines2 = []
 
 // make an object that can be used to deform a section of the mesh.
 // The function will deform the vertex with index mainHandle, and
@@ -274,11 +265,6 @@ function makeHandlesObj(mainHandle) {
 
 }
 
-var handlesObjArr = []
-
-//  handlesObjArr.push(makeHandlesObj(675))
-//handlesObjArr.push(makeHandlesObj(17000)) // 639, 1625, 1263(good)
-
 var newHandlesObj = {
   handles: []
 }
@@ -300,10 +286,8 @@ for(var i = 0; i < stationary.length; ++i) {
 newHandlesObj.mainHandle = handles[0]
 newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj)
 
-handlesObjArr.push(newHandlesObj)
-
 // set current handle that we're manipulating.
-var handlesObj = handlesObjArr[0]
+var handlesObj = newHandlesObj
 const canvas = document.body.appendChild(document.createElement('canvas'))
 const regl = require('regl')({canvas: canvas})
 
@@ -314,7 +298,6 @@ var str = `<a href="https://github.com/mikolalysenko/laplacian-deformation"><img
       Create GUI
 
     */
-
 var container = document.createElement('div')
 container.innerHTML = str
 document.body.appendChild(container)
@@ -324,10 +307,8 @@ var panel = control([
   {type: 'checkbox', label: 'render_handles', initial: renderHandles},
   {type: 'button', label: 'Reset Mesh', action: function () {
     bunny = JSON.parse(JSON.stringify(copyBunny))
-    var handlesObj = handlesObjArr[0]
-    //doDeform([+0.0, +1.0, 0.0])
-    //      bunny.positions[0][0] += 1000.0
-
+    var handlesObj = newHandlesObj
+    doDeform([+0.0, 0.0, 0.0])
     positionBuffer.subdata(bunny.positions)
   }},
 ],
@@ -336,9 +317,6 @@ var panel = control([
                      renderHandles = data.render_handles
                      params = data
                    })
-
-
-
 
 var par = document.createElement("h3")
 par.innerHTML = "Click near the handles and drag to deform the mesh. <br>Hold \"Q\"-key, and drag the mouse, and/or scroll to change the view."
@@ -362,28 +340,12 @@ var bunnyNormals = normals(bunny.cells, bunny.positions)
 var bunnyColors = []
 
 for(var i = 0; i < bunnyNormals.length; ++i) {
-
   if(stationarySet[i] === true) {
     bunnyColors[i] = [0.4, 0.4, 0.4];
-
   } else if(handlesSet[i] === true) {
     bunnyColors[i] = [0.8, 0.8, 0.0];
-
   } else {
     bunnyColors[i] = [0.0, 0.0, 0.7];
-
-  }
-
-
-}
-
-var newCells = []
-
-function sort(e) {
-  if(e[0] < e[1]) {
-    return [e[0], e[1]]
-  } else {
-    return [e[1], e[0]]
   }
 }
 
@@ -417,9 +379,9 @@ var drawBunny = regl({
 
   void main() {
 
-    vec3 color = vColor;//vec3(0.8, 0.0, 0.0);
+    vec3 color = vColor;
 
-    vec3 lp = uEyePos;//vec3(0.0, 0.3, 0.0);
+    vec3 lp = uEyePos;
 
     vec3 l = normalize(lp - vPosition);
     vec3 v = normalize(uEyePos - vPosition);
@@ -433,8 +395,6 @@ var drawBunny = regl({
         +                          0.15*lc*pow(clamp(dot(normalize(l+v),vNormal),0.0,1.0)  , 8.0)
 
       , 1.0);
-
-    //      gl_FragColor = vec4(abs(vNormal), 1.0);
 
   }`,
 
@@ -453,8 +413,6 @@ var drawBunny = regl({
   primitive: 'triangles'
 })
 
-
-// function for deforming the current handle.
 function doDeform(offset) {
 
   var numHandles = handlesObj.afterHandles - 0
@@ -487,40 +445,24 @@ function doDeform(offset) {
   // deform.
   var d = handlesObj.doDeform(arr, bunny.positions)
 
-  /*
-  // now assign the deformed vertices to the mesh.
-  for(var i = 0; i < bunny.positions.length; ++i) {
-  bunny.positions[i][0] = d[i*3 + 0]
-  bunny.positions[i][1] = d[i*3 + 1]
-  bunny.positions[i][2] = d[i*3 + 2]
-  }
-  */
 
   positionBuffer.subdata(bunny.positions)
 }
- doDeform([+0.0, +0.0, 0.0])
+doDeform([+0.0, +0.0, 0.0])
 positionBuffer.subdata(bunny.positions)
 
-/*
-  Setup camera.
-*/
 const camera = require('canvas-orbit-camera')(canvas)
 window.addEventListener('resize', fit(canvas), false)
-//camera.rotate([0.0, 0.0], [3.14*0.25, 0.0])
 camera.rotate([0.0, 0.0], [0.0, -0.4])
 camera.rotate([0.0, 0.0], [0.7, 0.0])
 
 camera.zoom(-29.0)
-//var mb = require('mouse-pressed')(canvas)
 var mp = require('mouse-position')(canvas)
 var projectionMatrix = mat4.perspective([],
                                         Math.PI / 4,
                                         canvas.width / canvas.height,
                                         0.01,
                                         1000)
-
-
-
 
 const globalScope = regl({
   uniforms: {
@@ -602,12 +544,6 @@ const drawHandle = regl({
   }
 })
 
-for(var i = 0; i < handlesObjArr.length; ++i) {
-  var ho = handlesObjArr[i]
-
-  var hp = bunny.positions[ho.mainHandle] // handle position
-}
-
 var movecamera = false
 
 window.onkeydown = function(e) {
@@ -642,63 +578,6 @@ canvas.addEventListener('mousedown', mousedown, false)
 function mousedown() {
   if(!movecamera) {
 
-    var minDist = 1000000.0
-
-    var candidates = []
-
-    var ret = getCameraRay()
-    var d = ret[0]
-    var o = ret[1]
-
-    var minDist = 100000.0
-    var minI = -1
-
-    for(var i = 0; i < handlesObjArr.length; ++i) {
-      var ho = handlesObjArr[i]
-
-      var hp = bunny.positions[ho.mainHandle] // handle position
-
-      var rp = vec3.subtract([], hp , o)
-      var rpmag = vec3.length(rp)
-
-      var rplmag = Math.abs(vec3.dot(rp, d)) / vec3.length(d)
-
-      var dist = Math.sqrt(  rpmag*rpmag - rplmag*rplmag  )
-
-
-      if(dist < 0.2) {
-        candidates.push(i)
-      }
-    }
-    if(candidates.length > 0) {
-      var minDist = 100000.0
-      var minI = -1
-      for(var j = 0; j < candidates.length; ++j) {
-        var i = candidates[j]
-        var ho = handlesObjArr[i]
-        var hp = bunny.positions[ho.mainHandle] // handle position
-
-        var dist = vec3.distance(hp, o)
-
-        if(minI == -1) {
-          minDist = dist
-          minI = i
-        } else if(dist < minDist) {
-          //        candidates.push(i)
-          minI = i
-          minDist = dist
-
-        }
-      }
-      //        handlesObj = handlesObjArr[minI]
-      isDragging = true
-      prevPos = null
-    } else {
-      handlesObj = null
-      isDragging = false
-    }
-
-
   }
 }
 
@@ -719,56 +598,23 @@ regl.frame(({viewportWidth, viewportHeight}) => {
 
   globalScope( () => {
     drawBunny()
-    //      drawBunnyLines2()
-    //      drawBunnyLines()
 
     if(handlesObj != null) {
-
-
       for(var i = 0; i < handlesObj.handles.length; ++i) {
         //      if(i != 3) continue
         var handle = bunny.positions[handlesObj.handles[i]]
 
         var c = [0.5, 0.5, 0.5]
 
-        if(i >= handlesObj.afterHandlesMore) { // 3
+        if(i >= handlesObj.afterHandlesMore) {
           c = [1.0, 0.0, 0.0]
-
         } else if(i >= handlesObj.afterHandles){
-          //              continue
           c = [0.0, 1.0, 0.0]
-
         } else {
-          //              continue
           c = [0.0, 0.0, 1.0]
-
         }
       }
     }
-
-    // render handles
-    if(renderHandles) {
-      for(var i = 0; i < handlesObjArr.length; ++i) {
-
-        var mh = handlesObjArr[i].mainHandle
-        var handle = bunny.positions[mh]
-
-        var c = [0.0, 0.0, 1.0]
-
-        if(handlesObjArr[i] == handlesObj)
-          var c = [0.0, 1.0, 0.0]
-
-        //     drawHandle({pos: handle, color: c})
-
-      }
-    }
-
-    /*
-      for(var i = 0; i < drawTexts.length; ++i) {
-      //        drawTexts[i]()
-
-      }
-    */
   })
 
   // if the mouse is moved while left mouse-button is down,
@@ -810,8 +656,8 @@ regl.frame(({viewportWidth, viewportHeight}) => {
     prevMousePos = mousePos
   }
 
+
   if(movecamera) {
     camera.tick()
   }
-
 })
