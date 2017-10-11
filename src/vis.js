@@ -139,23 +139,8 @@ for(var i = 0; i < bunny.positions.length; ++i) {
   }
 }
 
-console.log("stationary ", stationary)
-console.log("handles ", handles)
-console.log("unconstrained ", unconstrained)
-console.log("unconstrained ", bunny.positions.length)
-
-
-
 // copy of the mesh, that we use when restoring the mesh.
 var copyBunny = JSON.parse(JSON.stringify(bunny))
-
-function dist(u, v) {
-  var dx = u[0] - v[0]
-  var dy = u[1] - v[1]
-  var dz = u[2] - v[2]
-
-  return Math.sqrt(dx*dx + dy*dy + dz*dz)
-}
 
 var adj = []
 for(var i = 0; i < bunny.positions.length; ++i) {
@@ -164,23 +149,9 @@ for(var i = 0; i < bunny.positions.length; ++i) {
 
 for(var i = 0; i < bunny.cells.length; ++i) {
   var c = bunny.cells[i]
-  //  console.log("i: ", i)
   for(var j = 0; j < 3; ++j) {
     var a = c[j+0]
     var b = c[(j+1) % 3]
-
-    /*    if(adj[a] === "undefined") {
-          console.log("BAAAAD")
-          }
-
-          if(i >= 5352) {
-          console.log("j: ", a)
-          }
-
-          if(a > bunny.cells.length || a < 0) {
-          console.log("BAAAAD")
-          }
-    */
     adj[a].push(b)
   }
 }
@@ -205,12 +176,7 @@ function makeHandlesObj(mainHandle) {
   }
 
   var currentRing = [mainHandle]
-  //  newHandlesObj.handles.push(mainHandle)
-  //  console.log("console: ", adj[mainHandle])
 
-  console.log("mainHandle: ", mainHandle)
-
-  // 60
   while(newHandlesObj.handles.length < 10) {
 
     var nextRing = []
@@ -225,8 +191,6 @@ function makeHandlesObj(mainHandle) {
       visited[e] = true
 
       var adjs = adj[e]
-
-      console.log("adjs: ", e, adjs)
 
       for(var j = 0; j < adjs.length; ++j) {
         nextRing.push(adjs[j])
@@ -261,28 +225,7 @@ function makeHandlesObj(mainHandle) {
 
   newHandlesObj.afterHandlesMore = newHandlesObj.handles.length
 
-  // var fc = []
-  // for(var i = 0; i < bunny.positions.length; ++i) {
-  // fc[i] = 0
-  // }
-
-
-  // //        newHandlesObj.handles.push(e)
-  // for(var i = 0; i < newHandlesObj.handles.length; ++i) {
-  // var e = newHandlesObj.handles[i]
-  // fc[e]++
-  // if(fc > 1) {
-  // console.log("THIS IS BAD")
-  // }
-  // }
-
-
-
-
-
-
   var staticVertices = []
-  console.log("currentRing: ", currentRing)
   for(var i = 0; i < currentRing.length; ++i) {
     var e = currentRing[i]
 
@@ -293,27 +236,6 @@ function makeHandlesObj(mainHandle) {
     newHandlesObj.handles.push(e)
 
     visited[e] = true
-  }
-
-
-  // console.log("staticVertices: ", staticVertices)
-
-  // var sv = JSON.parse(JSON.stringify(staticVertices))
-
-  // sv = [577, 424, 1243, 103, 586, 625, 732, 532, 207, 1638, 1081]
-
-  // console.log("static vertices: ", sv)
-  // var sortedOrder = []
-  // var e = sv.shift()
-  // sortedOrder.push(e)
-
-  var bunnyLines =  require("gl-wireframe")(bunny.cells)
-  for(var i = 0; i < bunnyLines.length; i+=2) {
-    var f = [bunnyLines[i+0], bunnyLines[i+1]]
-    if(f[0] == e || f[1] == e) {
-      //      console.log("LIST: ", f)
-      bunnyLines2.push(f)
-    }
   }
 
   // // verify that it is an actual loop.
@@ -345,10 +267,8 @@ function makeHandlesObj(mainHandle) {
 
   // conse.log("sorred order: ", sortedOrder)
 
-
   newHandlesObj.mainHandle = mainHandle
-  //  newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj)
-  console.log("handles: ", newHandlesObj.handles)
+  newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj)
 
   return newHandlesObj
 
@@ -377,17 +297,8 @@ for(var i = 0; i < stationary.length; ++i) {
   newHandlesObj.handles.push(stationary[i])
 }
 
-console.log("newHandlesObj.handles: ", newHandlesObj.handles)
-
-
-
-
 newHandlesObj.mainHandle = handles[0]
-console.log("start deform3")
-console.log("start deform3: ", newHandlesObj.handles.length)
-
-
-//  newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj)
+newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj)
 
 handlesObjArr.push(newHandlesObj)
 
@@ -395,7 +306,6 @@ handlesObjArr.push(newHandlesObj)
 var handlesObj = handlesObjArr[0]
 const canvas = document.body.appendChild(document.createElement('canvas'))
 const regl = require('regl')({canvas: canvas})
-console.log("step-1")
 
 var str = `<a href="https://github.com/mikolalysenko/laplacian-deformation"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/82b228a3648bf44fc1163ef44c62fcc60081495e/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_red_aa0000.png"></a>`
 
@@ -409,8 +319,6 @@ var container = document.createElement('div')
 container.innerHTML = str
 document.body.appendChild(container)
 
-console.log("step0")
-
 var renderHandles = true
 var panel = control([
   {type: 'checkbox', label: 'render_handles', initial: renderHandles},
@@ -421,7 +329,6 @@ var panel = control([
     //      bunny.positions[0][0] += 1000.0
 
     positionBuffer.subdata(bunny.positions)
-    console.log("RESET MESH")
   }},
 ],
                     {theme: 'light', position: 'top-right'}
@@ -442,8 +349,6 @@ div.style.fontSize = '10px'
 div.appendChild(par)
 document.body.appendChild(div)
 
-
-console.log("step1")
 /*
   Create command for drawing bunny.
 */
@@ -473,12 +378,6 @@ for(var i = 0; i < bunnyNormals.length; ++i) {
 }
 
 var newCells = []
-/*  console.log("about to run loop: ", bunny.cells.length)
-    console.log("about to run loop: ", handlesObjArr[0].handles.length)
-
-    console.log("about to run loop: ", bunny.cells)
-*/
-
 
 function sort(e) {
   if(e[0] < e[1]) {
@@ -554,65 +453,6 @@ var drawBunny = regl({
   primitive: 'triangles'
 })
 
-var bunnyLines =  require("gl-wireframe")(bunny.cells)
-var bunnyLines = bunnyLines
-var drawBunnyLines = regl({
-  vert: `
-  precision mediump float;
-  attribute vec3 position;
-  uniform mat4 view, projection;
-  void main() {
-    gl_Position = projection * view * vec4(position, 1);
-  }`,
-
-  frag: `
-  precision mediump float;
-
-  void main() {
-    gl_FragColor = vec4(vec3(0.0, 1.0, 0.0)
-                        , 1.0);
-
-  }`,
-
-  attributes: {
-    position: {
-      buffer: positionBuffer,
-      normalized: true
-    },
-  },
-
-  elements: bunnyLines,
-  primitive: 'lines'
-})
-
-var drawBunnyLines2 = regl({
-  vert: `
-  precision mediump float;
-  attribute vec3 position;
-  uniform mat4 view, projection;
-  void main() {
-    gl_Position = projection * view * vec4(position, 1);
-  }`,
-
-  frag: `
-  precision mediump float;
-
-  void main() {
-    gl_FragColor = vec4(vec3(0.0, 0.0, 1.0)
-                        , 1.0);
-
-  }`,
-
-  attributes: {
-    position: {
-      buffer: positionBuffer,
-      normalized: true
-    },
-  },
-
-  elements: bunnyLines2,
-  primitive: 'lines'
-})
 
 // function for deforming the current handle.
 function doDeform(offset) {
@@ -644,8 +484,6 @@ function doDeform(offset) {
 
     ++j
   }
-
-  console.log("deform: ", offset)
   // deform.
   var d = handlesObj.doDeform(arr, bunny.positions)
 
@@ -660,7 +498,7 @@ function doDeform(offset) {
 
   positionBuffer.subdata(bunny.positions)
 }
-//  doDeform([+0.0, +0.0, 0.0])
+ doDeform([+0.0, +0.0, 0.0])
 positionBuffer.subdata(bunny.positions)
 
 /*
@@ -770,10 +608,6 @@ for(var i = 0; i < handlesObjArr.length; ++i) {
   var hp = bunny.positions[ho.mainHandle] // handle position
 }
 
-function dist(a, b) {
-  return Math.sqrt(  (a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1])  )
-}
-
 var movecamera = false
 
 window.onkeydown = function(e) {
@@ -836,8 +670,6 @@ function mousedown() {
         candidates.push(i)
       }
     }
-    //    handlesObj = handlesObjArr[minI]
-    //      console.log("PRESSING")
     if(candidates.length > 0) {
       var minDist = 100000.0
       var minI = -1
@@ -879,8 +711,6 @@ function mouseup() {
 
 camera.tick()
 
-console.log("handles: ", handlesObj)
-
 regl.frame(({viewportWidth, viewportHeight}) => {
   regl.clear({
     depth: 1,
@@ -913,9 +743,6 @@ regl.frame(({viewportWidth, viewportHeight}) => {
           c = [0.0, 0.0, 1.0]
 
         }
-
-        //          drawHandle({pos: handle, color: c})
-        //          console.log("i: ", handlesObj.handles[i])
       }
     }
 
