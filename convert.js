@@ -1,4 +1,4 @@
-var bunny = require("./bunny.js").bunny
+var bunny = require("./bumps_dec.obj.js").bunny
 
 var lines = bunny.split("\n")
 
@@ -38,7 +38,7 @@ str += JSON.stringify(cells)
 
 var fs = require('fs');
 
-fs.writeFile("./mytext", str, function(err) {
+fs.writeFile("./bumps_dec.js", str, function(err) {
     if(err) {
         return console.log(err);
     }

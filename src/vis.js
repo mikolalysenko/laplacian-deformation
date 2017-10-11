@@ -2,8 +2,12 @@ const normals = require('angle-normals')
 const mat4 = require('gl-mat4')
 const vec3 = require('gl-vec3')
 var control = require('control-panel')
-var bunny = require('bunny')
-//var bunny = require('../mytext')
+//var bunny = require('bunny')
+var bunny = require('../mytext')
+
+//bumps_dec.js
+
+var bunny = require('../bumps_dec.js')
 //var bunny = require('stanford-dragon/3')
 /*
 for(var j = 0; j < bunny.positions.length; ++j) {
@@ -163,6 +167,81 @@ for(var j = 0; j < bunny.positions.length; ++j) {
 
 //1081
 
+var cs = []
+var unconstrained = []
+var stationary = []
+var handles = []
+
+function getPoints(cells) {
+  var set = {}
+  for(var i = 0; i < cells.length; ++i) {
+    var c = cells[i]
+
+    set[c[0]] = true
+    set[c[1]] = true
+    set[c[2]] = true
+  }
+  var ps = []
+  for(var k in set) {
+    ps.push(parseInt(k))
+  }
+  return [ps, set]
+}
+
+for(var i = 0; i < bunny.cells.length; ++i) {
+  var c = bunny.cells[i]
+  var outside = false
+
+  for(var j = 0; j < 3; ++j) {
+    var p = bunny.positions[c[j+0]]
+
+
+    if(p[2] < 0.5) {
+      outside = true
+    }
+  }
+
+  if(!outside) {
+    cs.push(c)
+  }
+}
+var ret = getPoints(cs)
+stationary = ret[0]
+var stationarySet = ret[1]
+
+cs = []
+for(var i = 0; i < bunny.cells.length; ++i) {
+  var c = bunny.cells[i]
+  var outside = false
+
+  for(var j = 0; j < 3; ++j) {
+    var p = bunny.positions[c[j+0]]
+    if(p[2] > -0.42) {
+      outside = true
+    }
+  }
+
+  if(!outside) {
+    cs.push(c)
+  }
+}
+var ret = getPoints(cs)
+handles = ret[0]
+var handlesSet = ret[1]
+
+
+for(var i = 0; i < bunny.positions.length; ++i) {
+  if(!(stationarySet[i] === true || handlesSet[i] === true)) {
+    unconstrained.push(i)
+  }
+}
+
+console.log("stationary ", stationary)
+console.log("handles ", handles)
+console.log("unconstrained ", unconstrained)
+console.log("unconstrained ", bunny.positions.length)
+
+
 // copy of the mesh, that we use when restoring the mesh.
 var copyBunny = JSON.parse(JSON.stringify(bunny))
 
@@ -201,6 +280,9 @@ for(var i = 0; i < bunny.cells.length; ++i) {
     adj[a].push(b)
   }
 }
+
+
+
 
 var bunnyLines2 = []
 
@@ -424,8 +506,53 @@ setTimeout(loop, 0)
 function executeRest() {
 
   console.log("DONE LOADING")
-  handlesObjArr.push(makeHandlesObj(675))
+//  handlesObjArr.push(makeHandlesObj(675))
   //handlesObjArr.push(makeHandlesObj(17000)) // 639, 1625, 1263(good)
+
+  var newHandlesObj = {
+    handles: []
+  }
+
+  for(var i = 0; i < handles.length; ++i) {
+    newHandlesObj.handles.push(handles[i])
+  }
+  newHandlesObj.afterHandles = newHandlesObj.handles.length
+
+  for(var i = 0; i < unconstrained.length; ++i) {
+    newHandlesObj.handles.push(unconstrained[i])
+  }
+  newHandlesObj.afterHandlesMore = newHandlesObj.handles.length
+
+  for(var i = 0; i < stationary.length; ++i) {
+    newHandlesObj.handles.push(stationary[i])
+  }
+
+    console.log("newHandlesObj.handles: ", newHandlesObj.handles)
+
+  for(var i= 0; i < newHandlesObj.afterHandles; ++i) {
+    if(bunny.positions[newHandlesObj.handles[i]][2] > -0.42) {
+      console.log("WWWWRRRONG")
+    }
+  }
+
+  for(var i= newHandlesObj.afterHandlesMore; i < newHandlesObj.handles.length; ++i) {
+    if(bunny.positions[newHandlesObj.handles[i]][2] < 0.5) {
+    console.log("WWWWRRRONG: ", bunny.positions[newHandlesObj.handles[i]])
+    }
+  }
+
+
+
+
+
+  newHandlesObj.mainHandle = handles[0]
+  console.log("start deform3")
+  console.log("start deform3: ", newHandlesObj.handles.length)
+
+
+  newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj)
+
+  handlesObjArr.push(newHandlesObj)
 
   // set current handle that we're manipulating.
   var handlesObj = handlesObjArr[0]
@@ -453,7 +580,7 @@ function executeRest() {
     {type: 'button', label: 'Reset Mesh', action: function () {
       bunny = JSON.parse(JSON.stringify(copyBunny))
       var handlesObj = handlesObjArr[0]
-      //      doDeform([+0.0, +0.0, 0.0])
+     //doDeform([+0.0, +1.0, 0.0])
 //      bunny.positions[0][0] += 1000.0
 
   positionBuffer.subdata(bunny.positions)
@@ -492,11 +619,11 @@ function executeRest() {
   var bunnyNormals = normals(bunny.cells, bunny.positions)
 
   var newCells = []
-  console.log("about to run loop: ", bunny.cells.length)
+/*  console.log("about to run loop: ", bunny.cells.length)
   console.log("about to run loop: ", handlesObjArr[0].handles.length)
 
   console.log("about to run loop: ", bunny.cells)
-
+*/
 
 
   function sort(e) {
@@ -532,14 +659,23 @@ function executeRest() {
     void main() {
 
       vec3 color = vec3(0.8, 0.0, 0.0);
-      vec3 ambient = 0.6 * color;
-      gl_FragColor = vec4(ambient +
-                          0.25 *color*clamp( dot(vNormal, vec3(0.39, 0.87, 0.29)), 0.0,1.0 )
-                          +
-                          0.25 *color*clamp( dot(vNormal, vec3(-0.39, 0.87, -0.29)), 0.0,1.0 )
 
+      vec3 lp = uEyePos;//vec3(0.0, 0.3, 0.0);
+
+      vec3 l = normalize(lp - vPosition);
+      vec3 v = normalize(uEyePos - vPosition);
+
+      vec3 lc = vec3(1.0);
+
+      gl_FragColor = vec4(
+
+       0.5*color +
+                           0.35*lc*clamp( dot(vNormal, l), 0.0,1.0 )
++                          0.15*lc*pow(clamp(dot(normalize(l+v),vNormal),0.0,1.0)  , 8.0)
 
                           , 1.0);
+
+//      gl_FragColor = vec4(abs(vNormal), 1.0);
 
     }`,
 
@@ -662,7 +798,7 @@ function executeRest() {
 
     positionBuffer.subdata(bunny.positions)
   }
-  doDeform([+0.0, +0.0, 0.0])
+  doDeform([+0.0, +0.5, 0.0])
   positionBuffer.subdata(bunny.positions)
 
   /*
@@ -670,8 +806,11 @@ function executeRest() {
   */
   const camera = require('canvas-orbit-camera')(canvas)
   window.addEventListener('resize', fit(canvas), false)
+  //camera.rotate([0.0, 0.0], [3.14*0.25, 0.0])
   camera.rotate([0.0, 0.0], [0.0, -0.4])
-  camera.zoom(-30.0)
+  camera.rotate([0.0, 0.0], [0.7, 0.0])
+
+  camera.zoom(-29.0)
   //var mb = require('mouse-pressed')(canvas)
   var mp = require('mouse-position')(canvas)
   var projectionMatrix = mat4.perspective([],
@@ -680,14 +819,37 @@ function executeRest() {
                                           0.01,
                                           1000)
 
+
+var v=  [0.33852089662324714,
+    -0.43414949181734386,
+  0.8348160399229991,
+  0,
+    -0.1881740866240449,
+  0.8380404115639819,
+  0.5121316056592331,
+  0,
+    -0.9219512540699659,
+    -0.3304579960397991,
+  0.20199850746334924,
+  0,
+  0,
+  0,
+    -2.622776508331299,
+1]
+
   const globalScope = regl({
     uniforms: {
       view: () => {
-        return camera.view()
+        //return camera.view()
+        return v
       },
       projection: () => projectionMatrix,
 
-      uEyePos: cameraPosFromViewMatrix([], camera.view())
+      uEyePos: () =>{
+//        return cameraPosFromViewMatrix([], camera.view())
+        return cameraPosFromViewMatrix([], v)
+
+      }
 
     }
   })
@@ -863,7 +1025,11 @@ function executeRest() {
     if (key == 81) {
       movecamera = true
       isDragging = false
-
+    }
+    if (key == 87) {
+      var out = []
+      camera.view(out)
+      console.log(out)
     }
   }
 
@@ -971,27 +1137,27 @@ function executeRest() {
 
       if(handlesObj != null) {
 
+
         for(var i = 0; i < handlesObj.handles.length; ++i) {
           //      if(i != 3) continue
           var handle = bunny.positions[handlesObj.handles[i]]
 
-          var c
+          var c = [0.5, 0.5, 0.5]
 
-          if(i > handlesObj.afterHandlesMore) { // 3
+          if(i >= handlesObj.afterHandlesMore) { // 3
             c = [1.0, 0.0, 0.0]
 
-          } else if(i > handlesObj.afterHandles){
+          } else if(i >= handlesObj.afterHandles){
             //              continue
-            c = [0.0, 1.0, 0.0]
+              c = [0.0, 1.0, 0.0]
 
           } else {
             //              continue
-
-            var c = [0.0, 0.0, 1.0]
+             c = [0.0, 0.0, 1.0]
 
           }
 
-          drawHandle({pos: handle, color: c})
+//          drawHandle({pos: handle, color: c})
           //          console.log("i: ", handlesObj.handles[i])
         }
       }
