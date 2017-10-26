@@ -1,4 +1,6 @@
+
 var CSRMatrix = require('csr-matrix')
+
 var cmprecond = require('cuthill-mckee')
 var ldl = require('cholesky-solve').prepare
 var calcLaplacian = require('./src/laplacian').calcLaplacian
@@ -104,6 +106,9 @@ module.exports = function (cells, positions, handlesObj) {
   var numStationary = handlesObj.handles.length - handlesObj.afterHandlesMore
 
   var M = N + (numHandles + numStationary)*3
+
+  console.log("N: ", N)
+  console.log("M: ", M)
 
   var trace = new Float64Array(N)
 
