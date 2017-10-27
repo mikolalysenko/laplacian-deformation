@@ -1,4 +1,3 @@
-
 var CSRMatrix = require('csr-matrix')
 
 var cmprecond = require('cuthill-mckee')

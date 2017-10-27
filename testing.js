@@ -14,8 +14,8 @@ function fromList(items, nrows, ncols) {
     , cols = []
     , col_ptrs = []
     , data = new Float64Array(items.length)
-  nrows = nrows || 0
-  ncols = ncols || 0
+  nrows = nrows
+  ncols = ncols
   for(var i=0; i<items.length; ++i) {
     var item = items[i]
     if(i === 0 || item[0] !== items[i-1][0]) {
@@ -27,8 +27,8 @@ function fromList(items, nrows, ncols) {
       cols.push(item[1])
       col_ptrs.push(i)
     }
-    nrows = Math.max(nrows, item[0]+1)
-    ncols = Math.max(ncols, item[1]+1)
+    nrows = nrows > item[0]+1 ? nrows : item[0]+1
+    ncols = ncols > item[1]+1 ? ncols : item[1]+1
     data[i] = item[2]
   }
   rows.push(nrows)
@@ -65,8 +65,8 @@ function sparseDotProduct (
 
   while (true) {
     // intersect column intervals intervals
-    var clo = Math.max(aclo, bclo)
-    var chi = Math.min(achi, bchi)
+    var clo = (aclo > bclo) ? aclo : bclo
+    var chi = achi <  bchi ? achi : bchi
 
     // dot product
     var aptr = adlo + clo - aclo
@@ -135,49 +135,7 @@ function csrgemtm (a, b) {
         bstart, bend, bcols, bcolPtrs, bdata)
 
       if (v) {
-        result.push([r, c, v])
-      }
-    }
-  }
-
-  return result
-}
-
-
-// sparse matrix-transpose-multiply
-// - assume b is transpose
-function csrgemtm (a, b) {
-  var result = []
-
-  var arows = a.rows
-  var arowPtrs = a.row_ptrs
-  var acols = a.columns
-  var acolPtrs = a.column_ptrs
-  var adata = a.data
-
-  var brows = b.rows
-  var browPtrs = b.row_ptrs
-  var bcols = b.columns
-  var bcolPtrs = b.column_ptrs
-  var bdata = b.data
-
-  for (var i = 0; i < arows.length - 1; ++i) {
-    var r = arows[i]
-    var astart = arowPtrs[i]
-    var aend = arowPtrs[i + 1]
-
-    for (var j = 0; j < brows.length - 1; ++j) {
-      var c = brows[j]
-      var bstart = browPtrs[j]
-      var bend = browPtrs[j + 1]
-
-
-
-      var v = sparseDotProduct(
-        astart, aend, acols, acolPtrs, adata,
-        bstart, bend, bcols, bcolPtrs, bdata)
-
-      if (v) {
+//        console.log("val: ", v)
         result.push([r, c, v])
       }
     }
