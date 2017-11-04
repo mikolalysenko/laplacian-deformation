@@ -448,7 +448,7 @@ function doDeform(offset) {
 
   positionBuffer.subdata(bunny.positions)
 }
-//doDeform([+0.0, +0.0, 0.0])
+doDeform([+0.0, +0.4, 0.0])
 positionBuffer.subdata(bunny.positions)
 
 const camera = require('canvas-orbit-camera')(canvas)
