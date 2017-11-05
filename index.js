@@ -11,6 +11,7 @@ function comparePair (a, b) {
   return a[0] - b[0] || a[1] - b[1]
 }
 
+// we are simply returning a list of triplets. not complicated!
 var calcLaplacian = function (cells, positions, handlesObj, handlesMap, adj) {
   var i
 
@@ -63,7 +64,7 @@ var calcLaplacianReal = function (cells, positions, delta, handlesObj, invHandle
 
   var Ts = []
 
-  for(var i = 0; i < handlesObj.afterHandlesMore; ++i) {
+  for(var i = 0; i < handlesObj.stationaryBegin; ++i) {
     // compute transform T_i
 
     At_coeffs = []
@@ -148,7 +149,7 @@ var calcLaplacianReal = function (cells, positions, delta, handlesObj, invHandle
     // vertex number.
     var k = i - d * handlesObj.handles.length
 
-    if(k >= handlesObj.afterHandlesMore) {
+    if(k >= handlesObj.stationaryBegin) {
       continue // static vertex, so we specify no information.
     }
 
@@ -233,20 +234,15 @@ var calcLaplacianReal = function (cells, positions, delta, handlesObj, invHandle
 }
 
 var CSRMatrix = require('csr-matrix')
-var cmprecond = require('cuthill-mckee')
-var ldl = require('cholesky-solve').prepare
-
-let li = require("./mylib.js")
 var mathjs = require('mathjs')
 
+let li = require("./mylib.js")
 let EmscriptenMemoryManager = li.EmscriptenMemoryManager
 let SparseMatrix = li.SparseMatrix
 let DenseMatrix = li.DenseMatrix
 let Triplet = li.Triplet
 
 var csrgemtm = require('./src/csrgemtm')
-
-var qrSolve = require('qr-solve')
 
 function transpose (positions) {
   var x = new Float64Array(positions.length)
@@ -271,7 +267,7 @@ function augmentMatrix(coeffsReal, handlesObj, N, M, handlesMap, is2) {
       var e = coeffsReal[i]
 
       var myi = e[0] % handlesObj.handles.length
-      if(handlesObj.afterHandlesMore > myi) {
+      if(handlesObj.stationaryBegin > myi) {
         preprocess.push([e[0], e[1], e[2]])
       } else {
         e = e
@@ -283,17 +279,17 @@ function augmentMatrix(coeffsReal, handlesObj, N, M, handlesMap, is2) {
 
   // add handles.
   var P = handlesObj.handles.length
-  for (var i = 0; i < handlesObj.afterHandles; ++i) {
+  for (var i = 0; i < handlesObj.unconstrainedBegin; ++i) {
     coeffsReal.push([i*3 + N + 0, handlesMap[handlesObj.handles[i]] + 0 * P, 1])
     coeffsReal.push([i*3 + N + 1, handlesMap[handlesObj.handles[i]] + 1 * P, 1])
     coeffsReal.push([i*3 + N + 2, handlesMap[handlesObj.handles[i]] + 2 * P, 1])
   }
 
   // add stationary.
-  for (var i = handlesObj.afterHandlesMore; i < handlesObj.handles.length; ++i) {
-    coeffsReal.push([(i-handlesObj.afterHandlesMore)*3 + N + 0 + handlesObj.afterHandles*3, handlesMap[handlesObj.handles[i]] + 0 * P, 1])
-    coeffsReal.push([(i-handlesObj.afterHandlesMore)*3 + N + 1 + handlesObj.afterHandles*3, handlesMap[handlesObj.handles[i]] + 1 * P, 1])
-    coeffsReal.push([(i-handlesObj.afterHandlesMore)*3 + N + 2 + handlesObj.afterHandles*3, handlesMap[handlesObj.handles[i]] + 2 * P, 1])
+  for (var i = handlesObj.stationaryBegin; i < handlesObj.handles.length; ++i) {
+    coeffsReal.push([(i-handlesObj.stationaryBegin)*3 + N + 0 + handlesObj.unconstrainedBegin*3, handlesMap[handlesObj.handles[i]] + 0 * P, 1])
+    coeffsReal.push([(i-handlesObj.stationaryBegin)*3 + N + 1 + handlesObj.unconstrainedBegin*3, handlesMap[handlesObj.handles[i]] + 1 * P, 1])
+    coeffsReal.push([(i-handlesObj.stationaryBegin)*3 + N + 2 + handlesObj.unconstrainedBegin*3, handlesMap[handlesObj.handles[i]] + 2 * P, 1])
   }
 
   // this thing, times x(our desired solution) should be b.
@@ -322,16 +318,20 @@ function augmentMatrix(coeffsReal, handlesObj, N, M, handlesMap, is2) {
   return [llt, augMatTrans, coeffsReal]
 }
 
-module.exports = function (cells, positions, handlesObj) {
+module.exports = function (
+  cells, // just a list of trees.
+  positions, // just a list of vectors.
+  handlesObj) {
   var ROT_INV = true // rotation invariant algorithm
 
   var N = handlesObj.handles.length*3
 
-  var numHandles = handlesObj.afterHandles - 0
-  var numStationary = handlesObj.handles.length - handlesObj.afterHandlesMore
+  var numHandles = handlesObj.unconstrainedBegin - 0
+  var numStationary = handlesObj.handles.length - handlesObj.stationaryBegin
 
   var M = N + (numHandles + numStationary)*3
 
+  // can just be a regular array.  of length handlesObj.handles.length.
   var handlesMap = {}
   var invHandlesMap = {}
   for(var i = 0; i < handlesObj.handles.length; ++i) {
@@ -356,19 +356,18 @@ module.exports = function (cells, positions, handlesObj) {
     }
   }
 
+  // this part is easy. just use triplets.
   var coeffs = calcLaplacian(cells, positions, handlesObj, handlesMap, adj)
-
   var lapMat = CSRMatrix.fromList(coeffs, N, N)
 
+  // also pretty simple.
   var flattened = new Float64Array(N)
   var c = 0
-
   for (var d = 0; d < 3; ++d) {
     for (var i = 0; i < handlesObj.handles.length; ++i) {
       flattened[c++] = positions[handlesObj.handles[i]][d]
     }
   }
-
   var delta = lapMat.apply(flattened, new Float64Array(N))
 
   var origLengths = []
@@ -465,7 +464,7 @@ module.exports = function (cells, positions, handlesObj) {
 
       var tempPositions = []
 
-      for(var i = 0; i < handlesObj.afterHandlesMore; ++i) {
+      for(var i = 0; i < handlesObj.stationaryBegin; ++i) {
         // compute transform T_i
 
         // set of {i} and N
@@ -517,7 +516,7 @@ module.exports = function (cells, positions, handlesObj) {
 
       for (var d = 0; d < 3; ++d) {
         var count = 0
-        for (var i = 0; i < handlesObj.afterHandlesMore; ++i) {
+        for (var i = 0; i < handlesObj.stationaryBegin; ++i) {
           b[d*handlesObj.handles.length + count++] = tempPositions[i][d]
         }
       }

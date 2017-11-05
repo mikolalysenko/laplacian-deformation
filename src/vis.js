@@ -72,6 +72,7 @@ var unconstrained = []
 var stationary = []
 var handles = []
 
+// get the _unique_ vertex indices of the cells.
 function getPoints(cells) {
   var set = {}
   for(var i = 0; i < cells.length; ++i) {
@@ -95,7 +96,6 @@ for(var i = 0; i < bunny.cells.length; ++i) {
   for(var j = 0; j < 3; ++j) {
     var p = bunny.positions[c[j+0]]
 
-
     if((p[2]+0.039) < 0.5) {
       outside = true
     }
@@ -105,6 +105,7 @@ for(var i = 0; i < bunny.cells.length; ++i) {
     cs.push(c)
   }
 }
+
 var ret = getPoints(cs)
 stationary = ret[0]
 var stationarySet = ret[1]
@@ -152,118 +153,6 @@ for(var i = 0; i < bunny.cells.length; ++i) {
   }
 }
 
-// make an object that can be used to deform a section of the mesh.
-// The function will deform the vertex with index mainHandle, and
-// vertices that are close enough it.
-function makeHandlesObj(mainHandle) {
-
-  var newHandlesObj = {
-    handles: []
-  }
-
-  var visited = []
-  for(var i = 0; i < bunny.positions.length; ++i) {
-    visited[i] = false
-  }
-
-  var currentRing = [mainHandle]
-
-  while(newHandlesObj.handles.length < 10) {
-
-    var nextRing = []
-
-    for(var i = 0; i < currentRing.length; ++i) {
-      var e = currentRing[i]
-
-      if(visited[e])
-        continue
-
-      newHandlesObj.handles.push(e)
-      visited[e] = true
-
-      var adjs = adj[e]
-
-      for(var j = 0; j < adjs.length; ++j) {
-        nextRing.push(adjs[j])
-      }
-    }
-    currentRing = nextRing
-  }
-  newHandlesObj.afterHandles = newHandlesObj.handles.length
-
-
-  // 800
-  while(newHandlesObj.handles.length < 100) {
-
-    var nextRing = []
-
-    for(var i = 0; i < currentRing.length; ++i) {
-      var e = currentRing[i]
-
-      if(visited[e])
-        continue
-
-      newHandlesObj.handles.push(e)
-      visited[e] = true
-
-      var adjs = adj[e]
-      for(var j = 0; j < adjs.length; ++j) {
-        nextRing.push(adjs[j])
-      }
-    }
-    currentRing = nextRing
-  }
-
-  newHandlesObj.afterHandlesMore = newHandlesObj.handles.length
-
-  var staticVertices = []
-  for(var i = 0; i < currentRing.length; ++i) {
-    var e = currentRing[i]
-
-    if(visited[e])
-      continue
-
-    staticVertices.push(e)
-    newHandlesObj.handles.push(e)
-
-    visited[e] = true
-  }
-
-  // // verify that it is an actual loop.
-  // while(sv.length > 0) {
-  //   var breakOuter = false
-  //   var adjs = adj[e]
-  //   for(var i = 0; i < adjs.length; ++i) {
-
-  //     var p = adjs[i]
-
-  //     for(var j = 0; j < sv.length; ++j) {
-  //       if(p === sv[j]) {
-  //         breakOuter = true
-  //         sortedOrder.push(sv[j])
-  //         e = sv[j]
-  //         sv.splice(j, 1)
-  //         break
-  //       }
-  //     }
-
-  //     if(breakOuter)
-  //       break
-  //   }
-
-  //   if(!breakOuter) {
-  //     console.log("IS NOT PROPER LOOP)
-  //      break
-  //   }
-
-  // conse.log("sorred order: ", sortedOrder)
-
-  newHandlesObj.mainHandle = mainHandle
-  newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj)
-
-  return newHandlesObj
-
-}
 
 var newHandlesObj = {
   handles: []
@@ -272,18 +161,18 @@ var newHandlesObj = {
 for(var i = 0; i < handles.length; ++i) {
   newHandlesObj.handles.push(handles[i])
 }
-newHandlesObj.afterHandles = newHandlesObj.handles.length
+newHandlesObj.unconstrainedBegin = newHandlesObj.handles.length
 
 for(var i = 0; i < unconstrained.length; ++i) {
   newHandlesObj.handles.push(unconstrained[i])
 }
-newHandlesObj.afterHandlesMore = newHandlesObj.handles.length
+newHandlesObj.stationaryBegin = newHandlesObj.handles.length
 
 for(var i = 0; i < stationary.length; ++i) {
   newHandlesObj.handles.push(stationary[i])
 }
 
-newHandlesObj.mainHandle = handles[0]
+// input we export to C++.
 newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj)
 
 // set current handle that we're manipulating.
@@ -415,8 +304,8 @@ var drawBunny = regl({
 
 function doDeform(offset) {
 
-  var numHandles = handlesObj.afterHandles - 0
-  var numStationary = handlesObj.handles.length - handlesObj.afterHandlesMore
+  var numHandles = handlesObj.unconstrainedBegin - 0
+  var numStationary = handlesObj.handles.length - handlesObj.stationaryBegin
 
   if(!handlesObj)
     return
@@ -427,7 +316,7 @@ function doDeform(offset) {
   }
 
   var j = 0
-  for(var i = 0; i < (handlesObj.afterHandles); ++i) {
+  for(var i = 0; i < (handlesObj.unconstrainedBegin); ++i) {
     arr[j][0] = bunny.positions[handlesObj.handles[i]][0]  + offset[0]
     arr[j][1] = bunny.positions[handlesObj.handles[i]][1]  + offset[1]
     arr[j][2] = bunny.positions[handlesObj.handles[i]][2]  + offset[2]
@@ -435,7 +324,7 @@ function doDeform(offset) {
     ++j
   }
 
-  for(var i = handlesObj.afterHandlesMore; i < (handlesObj.handles.length); ++i) {
+  for(var i = handlesObj.stationaryBegin; i < (handlesObj.handles.length); ++i) {
     arr[j][0] = bunny.positions[handlesObj.handles[i]][0]
     arr[j][1] = bunny.positions[handlesObj.handles[i]][1]
     arr[j][2] = bunny.positions[handlesObj.handles[i]][2]
@@ -606,9 +495,9 @@ regl.frame(({viewportWidth, viewportHeight}) => {
 
         var c = [0.5, 0.5, 0.5]
 
-        if(i >= handlesObj.afterHandlesMore) {
+        if(i >= handlesObj.stationaryBegin) {
           c = [1.0, 0.0, 0.0]
-        } else if(i >= handlesObj.afterHandles){
+        } else if(i >= handlesObj.unconstrainedBegin){
           c = [0.0, 1.0, 0.0]
         } else {
           c = [0.0, 0.0, 1.0]
