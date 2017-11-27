@@ -67,8 +67,6 @@ var calcLaplacianReal = function (cells, positions, delta, handlesObj, invHandle
   for(var i = 0; i < handlesObj.stationaryBegin; ++i) {
     // compute transform T_i
 
-    At_coeffs = []
-
     // set of {i} and N
     var inset = []
     inset.push(i)
@@ -277,6 +275,7 @@ function augmentMatrix(coeffsReal, handlesObj, N, M, handlesMap, is2) {
     coeffsReal = preprocess
   }
 
+
   // add handles.
   var P = handlesObj.handles.length
   for (var i = 0; i < handlesObj.unconstrainedBegin; ++i) {
@@ -315,7 +314,7 @@ function augmentMatrix(coeffsReal, handlesObj, N, M, handlesMap, is2) {
   }
   let spars = SparseMatrix.fromTriplet(T)
   let llt = spars.chol()
-  return [llt, augMatTrans, coeffsReal]
+  return [llt, augMatTrans]
 }
 
 module.exports = function (
@@ -350,7 +349,7 @@ module.exports = function (
     for(var j = 0; j < 3; ++j) {
       var a = handlesMap[c[j+0]]
       var b = handlesMap[c[(j+1) % 3]]
-      if(a !== undefined && b !== undefined) {
+      if((a !== undefined && b !== undefined)) {
         adj[a].push(b)
       }
     }
@@ -394,12 +393,10 @@ module.exports = function (
   var a = augmentMatrix(coeffsReal, handlesObj, N, M, handlesMap, false)
   var llt = a[0]
   var augMatTrans = a[1]
-  var leftsidemat = a[2]
 
   a = augmentMatrix(coeffs, handlesObj, N, M, handlesMap, true)
   var llt2 = a[0]
   var augMatTrans2 = a[1]
-  var leftsidemat2 = a[2]
 
   var b = new Float64Array(M)
   var x = new Float64Array(N)
@@ -438,7 +435,7 @@ module.exports = function (
 
     for (var d = 0; d < 3; ++d) {
       for (var i = 0; i < handlesObj.handles.length; ++i) {
-        positions[invHandlesMap[i]][d] = ret.get(i + d*(N/3), 0)
+        outPositions[invHandlesMap[i]][d] = ret.get(i + d*(N/3), 0)
       }
     }
 
@@ -466,7 +463,7 @@ module.exports = function (
 
       for(var i = 0; i < handlesObj.stationaryBegin; ++i) {
         // compute transform T_i
-
+/*
         // set of {i} and N
         var inset = []
         inset.push(i)
@@ -476,9 +473,9 @@ module.exports = function (
 
         var v = []
         for(var j = 0; j < inset.length; ++j) {
-          v.push(positions[invHandlesMap[inset[j]]][0])
-          v.push(positions[invHandlesMap[inset[j]]][1])
-          v.push(positions[invHandlesMap[inset[j]]][2])
+          v.push(outPositions[invHandlesMap[inset[j]]][0])
+          v.push(outPositions[invHandlesMap[inset[j]]][1])
+          v.push(outPositions[invHandlesMap[inset[j]]][2])
         }
 
         var prod = mathjs.multiply(Ts[i], v)
@@ -502,7 +499,7 @@ module.exports = function (
         var rcps = 1.0 / s
 
         var j = i
-
+*/
         var ax = solutionDeltaTrans[i][0]
         var ay = solutionDeltaTrans[i][1]
         var az = solutionDeltaTrans[i][2]
@@ -531,7 +528,7 @@ module.exports = function (
 
       for (var d = 0; d < 3; ++d) {
         for (var i = 0; i < handlesObj.handles.length; ++i) {
-          positions[invHandlesMap[i]][d] = ret.get(i + d*(N/3), 0)
+          outPositions[invHandlesMap[i]][d] = ret.get(i + d*(N/3), 0)
 
         }
       }
