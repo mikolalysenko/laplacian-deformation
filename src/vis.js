@@ -9,7 +9,31 @@ var bunny = require('../bumps_dec.js')
 
 const fit = require('canvas-fit')
 var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
-var prepareDeform = require('../index')
+var Module = require('../out.js')
+
+
+
+
+prepareDeform = Module.cwrap(
+  'prepareDeform', null, [
+    'number', 'number', // cells, nCells
+
+    'number', 'number', // positions, nPositions,
+
+    'number', 'number', // handles, nHandles
+
+    'number', 'number', // stationaryBegin, unconstrainedBegin
+
+    'number',  // ROT_INV
+  ]
+);
+
+doDeformLib = Module.cwrap(
+  'doDeform', null, [
+    'number', 'number', // handlePositions, nHandlePositions
+    'number', // outPositions
+  ]
+);
 
 var aabb = {
   min: [+1000, +1000, +1000],
@@ -172,8 +196,51 @@ for(var i = 0; i < stationary.length; ++i) {
   newHandlesObj.handles.push(stationary[i])
 }
 
+var cellsArr = new Int32Array(bunny.cells.length * 3);
+var ia = 0
+for(var ic = 0; ic < bunny.cells.length; ++ic) {
+  var c = bunny.cells[ic]
+  cellsArr[ia++] = c[0]
+  cellsArr[ia++] = c[1]
+  cellsArr[ia++] = c[2]
+}
+var nDataBytes = cellsArr.length * cellsArr.BYTES_PER_ELEMENT;
+var cellsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+cellsHeap.set(new Uint8Array(cellsArr.buffer));
+
+var positionsArr = new Float64Array(bunny.positions.length * 3);
+var ia = 0
+for(var ic = 0; ic < bunny.positions.length; ++ic) {
+  var c = bunny.positions[ic]
+  positionsArr[ia++] = c[0]
+  positionsArr[ia++] = c[1]
+  positionsArr[ia++] = c[2]
+}
+var nDataBytes = positionsArr.length * positionsArr.BYTES_PER_ELEMENT;
+var positionsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+positionsHeap.set(new Uint8Array(positionsArr.buffer));
+
+var handlesArr = new Int32Array(newHandlesObj.handles);
+var nDataBytes = handlesArr.length * handlesArr.BYTES_PER_ELEMENT;
+var handlesHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+handlesHeap.set(new Uint8Array(handlesArr.buffer));
+
+prepareDeform(
+  cellsHeap.byteOffset, bunny.cells.length*3,
+
+  positionsHeap.byteOffset, bunny.positions.length*3,
+
+  handlesHeap.byteOffset, newHandlesObj.handles.length,
+
+  newHandlesObj.stationaryBegin, newHandlesObj.unconstrainedBegin,
+  true
+)
+//testfunction(dataHeap.byteOffset, data.length);
+
+
+
 // input we export to C++.
-newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj)
+//newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj)
 
 // set current handle that we're manipulating.
 var handlesObj = newHandlesObj
@@ -310,29 +377,43 @@ function doDeform(offset) {
   if(!handlesObj)
     return
 
-  var arr = []
-  for(var i = 0; i < (numHandles + numStationary); ++i) {
-    arr[i] = []
-  }
+  var nHandlesPositionsArr = numHandles + numStationary
+
+  var handlesPositionsArr = new Float64Array(nHandlesPositionsArr*3);
 
   var j = 0
   for(var i = 0; i < (handlesObj.unconstrainedBegin); ++i) {
-    arr[j][0] = bunny.positions[handlesObj.handles[i]][0]  + offset[0]
-    arr[j][1] = bunny.positions[handlesObj.handles[i]][1]  + offset[1]
-    arr[j][2] = bunny.positions[handlesObj.handles[i]][2]  + offset[2]
-
-    ++j
+    handlesPositionsArr[j++] = bunny.positions[handlesObj.handles[i]][0]  + offset[0]
+    handlesPositionsArr[j++] = bunny.positions[handlesObj.handles[i]][1]  + offset[1]
+    handlesPositionsArr[j++] = bunny.positions[handlesObj.handles[i]][2]  + offset[2]
   }
 
   for(var i = handlesObj.stationaryBegin; i < (handlesObj.handles.length); ++i) {
-    arr[j][0] = bunny.positions[handlesObj.handles[i]][0]
-    arr[j][1] = bunny.positions[handlesObj.handles[i]][1]
-    arr[j][2] = bunny.positions[handlesObj.handles[i]][2]
-
-    ++j
+    handlesPositionsArr[j++] = bunny.positions[handlesObj.handles[i]][0]
+    handlesPositionsArr[j++] = bunny.positions[handlesObj.handles[i]][1]
+    handlesPositionsArr[j++] = bunny.positions[handlesObj.handles[i]][2]
   }
   // deform.
-  var d = handlesObj.doDeform(arr, bunny.positions)
+  //var d = handlesObj.doDeform(arr, bunny.positions)
+
+  var nDataBytes = handlesPositionsArr.length * handlesPositionsArr.BYTES_PER_ELEMENT;
+  var handlesPositionsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+  handlesPositionsHeap.set(new Uint8Array(handlesPositionsArr.buffer));
+
+  doDeformLib(
+    handlesPositionsHeap.byteOffset, nHandlesPositionsArr,
+
+    positionsHeap.byteOffset
+  )
+
+  var result = new Float64Array(positionsHeap.buffer, positionsHeap.byteOffset, bunny.positions.length*3)
+
+  for(var i = 0 ; i < bunny.positions.length; i+=1) {
+    bunny.positions[i][0] = result[3*i + 0]
+    bunny.positions[i][1] = result[3*i + 1]
+    bunny.positions[i][2] = result[3*i + 2]
+
+  }
 
   positionBuffer.subdata(bunny.positions)
 }
