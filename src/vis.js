@@ -2,7 +2,10 @@ const normals = require('angle-normals')
 const mat4 = require('gl-mat4')
 const vec3 = require('gl-vec3')
 var control = require('control-panel')
-var bunny = require('../bumps_dec.js')
+//var bunny = require('../bumps_dec.js')
+//var bunny = require('stanford-dragon/3')
+var bunny = require('bunny')
+
 var rayTriIntersect = require('ray-triangle-intersection');
 
 const fit = require('canvas-fit')
@@ -208,7 +211,7 @@ loadWASM().then((Module) => {
     }
 
     // FIRST HANDLES.
-    while(handlesObj.handles.length < 50) {
+    while(handlesObj.handles.length < 150) {
 
       var nextRing = []
 
@@ -234,7 +237,7 @@ loadWASM().then((Module) => {
 
 
     // 800
-    while(handlesObj.handles.length < 600) {
+    while(handlesObj.handles.length < 500) {
 
       var nextRing = []
 
@@ -400,9 +403,10 @@ loadWASM().then((Module) => {
 
   }
 
-  selectHandle(1900)
+  var dragTarget = 1300
+  selectHandle(dragTarget)
+
 //  selectHandle(200)
-  var dragTarget = 1900
 
 
 
