@@ -10,7 +10,7 @@ var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
 
 
   const canvas = document.body.appendChild(document.createElement('canvas'))
-  const regl = require('regl')({canvas: canvas})
+const regl = require('regl')({canvas: canvas, extensions: ['oes_texture_float']})
 
   var str = `<a href="https://github.com/mikolalysenko/laplacian-deformation"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/82b228a3648bf44fc1163ef44c62fcc60081495e/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_red_aa0000.png"></a>`
 
@@ -175,6 +175,10 @@ loadWASM().then((Module) => {
 
   var bunnyNormals = normals(bunny.cells, bunny.positions)
 
+  var bunnyIds = []
+  for(var i = 0; i < bunny.positions.length; ++i) {
+    bunnyIds[i] = i + 0.0
+  }
 
   var handlesObj = {
     handles: []
@@ -517,6 +521,8 @@ loadWASM().then((Module) => {
     primitive: 'triangles'
   })
 
+
+
   function doDeform(offset) {
 
     var numHandles = handlesObj.unconstrainedBegin - 0
@@ -627,42 +633,6 @@ loadWASM().then((Module) => {
 
   var isDragging = false
 
-  // draws a handle as a sphere.
-  const drawHandle = regl({
-    vert: `
-    precision mediump float;
-    attribute vec3 position;
-    uniform mat4 view, projection;
-    uniform vec3 pos;
-
-    void main() {
-      gl_Position = projection * view * vec4(position*0.010 + pos, 1);
-    }`,
-
-    frag: `
-    precision mediump float;
-
-    uniform vec3 color;
-    void main() {
-      gl_FragColor = vec4(color + vec3(0.0, 0.0, 1.0), 1.0);
-    }`,
-
-    attributes: {
-      position: () => sphereMesh.positions,
-    },
-
-    elements: () => sphereMesh.cells,
-
-    uniforms: {
-      color: (_, props) => {
-        return props.color
-      },
-      pos: (_, props) => {
-        return props.pos
-      }
-    }
-  })
-
   var movecamera = false
 
   window.onkeydown = function(e) {
@@ -717,6 +687,7 @@ loadWASM().then((Module) => {
 
     globalScope( () => {
       drawBunny()
+
 
       if(handlesObj != null) {
         for(var i = 0; i < handlesObj.handles.length; ++i) {
