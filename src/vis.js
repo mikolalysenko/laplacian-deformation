@@ -176,221 +176,226 @@ loadWASM().then((Module) => {
   var bunnyNormals = normals(bunny.cells, bunny.positions)
 
 
-
-
-
-
-
-
-  var visited = []
-  for(var i = 0; i < bunny.positions.length; ++i) {
-    visited[i] = false
-  }
-
   var handlesObj = {
     handles: []
   }
 
-  var currentRing = [1900]
+  function selectHandle(mainHandle) {
+    var currentRing = [mainHandle]
 
-  var unconstrainedSet = []
-  var handlesSet = []
+    var visited = []
+    for(var i = 0; i < bunny.positions.length; ++i) {
+      visited[i] = false
+    }
 
-  for(var i = 0; i < bunny.positions.length; ++i) {
-    unconstrainedSet[i] = false
-    handlesSet[i] = false
-  }
+    handlesObj.handles = []
 
-  // FIRST HANDLES.
-  while(handlesObj.handles.length < 50) {
 
-    var nextRing = []
 
+    var unconstrainedSet = []
+    var handlesSet = []
+
+    for(var i = 0; i < bunny.positions.length; ++i) {
+      unconstrainedSet[i] = false
+      handlesSet[i] = false
+    }
+
+    // FIRST HANDLES.
+    while(handlesObj.handles.length < 50) {
+
+      var nextRing = []
+
+      for(var i = 0; i < currentRing.length; ++i) {
+        var e = currentRing[i]
+
+        if(visited[e])
+          continue
+
+        handlesObj.handles.push(e)
+        visited[e] = true
+        handlesSet[e] = true
+
+        var adjs = adj[e]
+
+        for(var j = 0; j < adjs.length; ++j) {
+          nextRing.push(adjs[j])
+        }
+      }
+      currentRing = nextRing
+    }
+    handlesObj.unconstrainedBegin = handlesObj.handles.length
+
+
+    // 800
+    while(handlesObj.handles.length < 600) {
+
+      var nextRing = []
+
+      for(var i = 0; i < currentRing.length; ++i) {
+        var e = currentRing[i]
+
+        if(visited[e])
+          continue
+
+        handlesObj.handles.push(e)
+        visited[e] = true
+        unconstrainedSet[e] = true
+
+
+        var adjs = adj[e]
+        for(var j = 0; j < adjs.length; ++j) {
+          nextRing.push(adjs[j])
+        }
+      }
+      currentRing = nextRing
+    }
+
+    handlesObj.stationaryBegin = handlesObj.handles.length
+
+    var staticVertices = []
     for(var i = 0; i < currentRing.length; ++i) {
       var e = currentRing[i]
 
       if(visited[e])
         continue
 
+      staticVertices.push(e)
       handlesObj.handles.push(e)
+
       visited[e] = true
-      handlesSet[e] = true
-
-      var adjs = adj[e]
-
-      for(var j = 0; j < adjs.length; ++j) {
-        nextRing.push(adjs[j])
-      }
     }
-    currentRing = nextRing
-  }
-  handlesObj.unconstrainedBegin = handlesObj.handles.length
 
+    /*
+      var cs = []
+      var unconstrained = []
+      var stationary = []
+      var handles = []
 
-  // 800
-  while(handlesObj.handles.length < 600) {
-
-    var nextRing = []
-
-    for(var i = 0; i < currentRing.length; ++i) {
-      var e = currentRing[i]
-
-      if(visited[e])
-        continue
-
-      handlesObj.handles.push(e)
-      visited[e] = true
-      unconstrainedSet[e] = true
-
-
-      var adjs = adj[e]
-      for(var j = 0; j < adjs.length; ++j) {
-        nextRing.push(adjs[j])
-      }
-    }
-    currentRing = nextRing
-  }
-
-  handlesObj.stationaryBegin = handlesObj.handles.length
-
-  var staticVertices = []
-  for(var i = 0; i < currentRing.length; ++i) {
-    var e = currentRing[i]
-
-    if(visited[e])
-      continue
-
-    staticVertices.push(e)
-    handlesObj.handles.push(e)
-
-    visited[e] = true
-  }
-
-  /*
-  var cs = []
-  var unconstrained = []
-  var stationary = []
-  var handles = []
-
-  // get the _unique_ vertex indices of the cells.
-  function getPoints(cells) {
-    var set = {}
-    for(var i = 0; i < cells.length; ++i) {
+      // get the _unique_ vertex indices of the cells.
+      function getPoints(cells) {
+      var set = {}
+      for(var i = 0; i < cells.length; ++i) {
       var c = cells[i]
 
       set[c[0]] = true
       set[c[1]] = true
       set[c[2]] = true
-    }
-    var ps = []
-    for(var k in set) {
+      }
+      var ps = []
+      for(var k in set) {
       ps.push(parseInt(k))
-    }
-    return [ps, set]
-  }
+      }
+      return [ps, set]
+      }
 
-  for(var i = 0; i < bunny.cells.length; ++i) {
-    var c = bunny.cells[i]
-    var outside = false
+      for(var i = 0; i < bunny.cells.length; ++i) {
+      var c = bunny.cells[i]
+      var outside = false
 
-    for(var j = 0; j < 3; ++j) {
+      for(var j = 0; j < 3; ++j) {
       var p = bunny.positions[c[j+0]]
 
       if((p[2]+0.039) < 0.5) {
-        outside = true
+      outside = true
       }
-    }
+      }
 
-    if(!outside) {
+      if(!outside) {
       cs.push(c)
-    }
-  }
+      }
+      }
 
-  var ret = getPoints(cs)
-  stationary = ret[0]
-  var stationarySet = ret[1]
+      var ret = getPoints(cs)
+      stationary = ret[0]
+      var stationarySet = ret[1]
 
-  cs = []
-  for(var i = 0; i < bunny.cells.length; ++i) {
-    var c = bunny.cells[i]
-    var outside = false
+      cs = []
+      for(var i = 0; i < bunny.cells.length; ++i) {
+      var c = bunny.cells[i]
+      var outside = false
 
-    for(var j = 0; j < 3; ++j) {
+      for(var j = 0; j < 3; ++j) {
       var p = bunny.positions[c[j+0]]
       if((p[2]+0.039) > -0.42) {
-        outside = true
+      outside = true
       }
-    }
+      }
 
-    if(!outside) {
+      if(!outside) {
       cs.push(c)
-    }
-  }
-  var ret = getPoints(cs)
-  handles = ret[0]
-  var handlesSet = ret[1]
+      }
+      }
+      var ret = getPoints(cs)
+      handles = ret[0]
+      var handlesSet = ret[1]
 
-  for(var i = 0; i < bunny.positions.length; ++i) {
-    if(!(stationarySet[i] === true || handlesSet[i] === true)) {
+      for(var i = 0; i < bunny.positions.length; ++i) {
+      if(!(stationarySet[i] === true || handlesSet[i] === true)) {
       unconstrained.push(i)
-    }
-  }
+      }
+      }
 
 
-  // copy of the mesh, that we use when restoring the mesh.
-  var copyBunny = JSON.parse(JSON.stringify(bunny))
+      // copy of the mesh, that we use when restoring the mesh.
+      var copyBunny = JSON.parse(JSON.stringify(bunny))
 
 
-  var handlesObj = {
-    handles: []
-  }
+      var handlesObj = {
+      handles: []
+      }
 
-  for(var i = 0; i < handles.length; ++i) {
-    handlesObj.handles.push(handles[i])
-  }
-  handlesObj.unconstrainedBegin = handlesObj.handles.length
+      for(var i = 0; i < handles.length; ++i) {
+      handlesObj.handles.push(handles[i])
+      }
+      handlesObj.unconstrainedBegin = handlesObj.handles.length
 
-  for(var i = 0; i < unconstrained.length; ++i) {
-    handlesObj.handles.push(unconstrained[i])
-  }
-  handlesObj.stationaryBegin = handlesObj.handles.length
+      for(var i = 0; i < unconstrained.length; ++i) {
+      handlesObj.handles.push(unconstrained[i])
+      }
+      handlesObj.stationaryBegin = handlesObj.handles.length
 
-  for(var i = 0; i < stationary.length; ++i) {
-    handlesObj.handles.push(stationary[i])
-  }
-*/
+      for(var i = 0; i < stationary.length; ++i) {
+      handlesObj.handles.push(stationary[i])
+      }
+    */
 
-  var handlesArr = new Int32Array(handlesObj.handles);
-  var nDataBytes = handlesArr.length * handlesArr.BYTES_PER_ELEMENT;
-  var handlesHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
-  handlesHeap.set(new Uint8Array(handlesArr.buffer));
+    var handlesArr = new Int32Array(handlesObj.handles);
+    var nDataBytes = handlesArr.length * handlesArr.BYTES_PER_ELEMENT;
+    var handlesHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+    handlesHeap.set(new Uint8Array(handlesArr.buffer));
 
 
-  var bunnyColors = []
+    var bunnyColors = []
 
-  for(var i = 0; i < bunnyNormals.length; ++i) {
+    for(var i = 0; i < bunnyNormals.length; ++i) {
       bunnyColors[i] = [0.4, 0.4, 0.4];
 
-    if(handlesSet[i] === true) {
-      bunnyColors[i] = [0.3, 0.3, 0.0];
-    } else if(unconstrainedSet[i] === true) {
-      bunnyColors[i] = [0.0, 0.0, 0.3];
-    } else {
-      bunnyColors[i] = [0.0, 0.0, 0.0];
+      if(handlesSet[i] === true) {
+        bunnyColors[i] = [0.3, 0.3, 0.0];
+      } else if(unconstrainedSet[i] === true) {
+        bunnyColors[i] = [0.0, 0.0, 0.3];
+      } else {
+        bunnyColors[i] = [0.0, 0.0, 0.0];
+      }
     }
+    colorBuffer.subdata(bunnyColors)
+
+    prepareDeform(
+      cellsHeap.byteOffset, bunny.cells.length*3,
+
+      positionsHeap.byteOffset, bunny.positions.length*3,
+
+      handlesHeap.byteOffset, handlesObj.handles.length,
+
+      handlesObj.stationaryBegin, handlesObj.unconstrainedBegin,
+      true
+    )
+
   }
-  colorBuffer.subdata(bunnyColors)
 
-  prepareDeform(
-    cellsHeap.byteOffset, bunny.cells.length*3,
+  selectHandle(1900)
+//  selectHandle(200)
 
-    positionsHeap.byteOffset, bunny.positions.length*3,
-
-    handlesHeap.byteOffset, handlesObj.handles.length,
-
-    handlesObj.stationaryBegin, handlesObj.unconstrainedBegin,
-    true
-  )
 
 
 
@@ -405,7 +410,6 @@ loadWASM().then((Module) => {
 
   // set current handle that we're manipulating.
 
-
       /*
         Create GUI
 
@@ -419,9 +423,12 @@ loadWASM().then((Module) => {
     {type: 'checkbox', label: 'render_handles', initial: renderHandles},
     {type: 'button', label: 'Reset Mesh', action: function () {
 //      bunny = JSON.parse(JSON.stringify(copyBunny))
-      var handlesObj = handlesObj
-      doDeform([+0.0, 0.2, 0.0])
-      positionBuffer.subdata(bunny.positions)
+
+      //var handlesObj = handlesObj
+      //doDeform([+0.0, 0.2, 0.0])
+      //positionBuffer.subdata(bunny.positions)
+      selectHandle(200)
+
     }},
   ],
                       {theme: 'light', position: 'top-right'}
