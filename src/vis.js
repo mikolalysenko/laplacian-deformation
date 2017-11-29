@@ -8,6 +8,13 @@ const fit = require('canvas-fit')
 var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
 //var Module = require('../out2.js')
 
+
+  const canvas = document.body.appendChild(document.createElement('canvas'))
+  const regl = require('regl')({canvas: canvas})
+
+  var str = `<a href="https://github.com/mikolalysenko/laplacian-deformation"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/82b228a3648bf44fc1163ef44c62fcc60081495e/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_red_aa0000.png"></a>`
+
+
 Module = {};
 loadWASM = () => {
   return new Promise((resolve) => {
@@ -50,6 +57,8 @@ loadWASM().then((Module) => {
       'number', // outPositions
     ]
   );
+
+
 
   var aabb = {
     min: [+1000, +1000, +1000],
@@ -122,12 +131,63 @@ loadWASM().then((Module) => {
   }
 
 
+
+  var cellsArr = new Int32Array(bunny.cells.length * 3);
+  var ia = 0
+  for(var ic = 0; ic < bunny.cells.length; ++ic) {
+    var c = bunny.cells[ic]
+    cellsArr[ia++] = c[0]
+    cellsArr[ia++] = c[1]
+    cellsArr[ia++] = c[2]
+  }
+  var nDataBytes = cellsArr.length * cellsArr.BYTES_PER_ELEMENT;
+  var cellsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+  cellsHeap.set(new Uint8Array(cellsArr.buffer));
+
+  var positionsArr = new Float64Array(bunny.positions.length * 3);
+  var ia = 0
+  for(var ic = 0; ic < bunny.positions.length; ++ic) {
+    var c = bunny.positions[ic]
+    positionsArr[ia++] = c[0]
+    positionsArr[ia++] = c[1]
+    positionsArr[ia++] = c[2]
+  }
+  var nDataBytes = positionsArr.length * positionsArr.BYTES_PER_ELEMENT;
+  var positionsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+  positionsHeap.set(new Uint8Array(positionsArr.buffer));
+
+
+
+  /*
+    Create command for drawing bunny.
+  */
+  const positionBuffer = regl.buffer({
+    length: bunny.positions.length * 3 * 4,
+    type: 'float',
+    usage: 'dynamic'
+  })
+
+  const colorBuffer = regl.buffer({
+    length: bunny.positions.length * 3 * 4,
+    type: 'float',
+    usage: 'dynamic'
+  })
+
+  var bunnyNormals = normals(bunny.cells, bunny.positions)
+
+
+
+
+
+
+
+
   var visited = []
   for(var i = 0; i < bunny.positions.length; ++i) {
     visited[i] = false
   }
 
-  var newHandlesObj = {
+  var handlesObj = {
     handles: []
   }
 
@@ -142,7 +202,7 @@ loadWASM().then((Module) => {
   }
 
   // FIRST HANDLES.
-  while(newHandlesObj.handles.length < 50) {
+  while(handlesObj.handles.length < 50) {
 
     var nextRing = []
 
@@ -152,7 +212,7 @@ loadWASM().then((Module) => {
       if(visited[e])
         continue
 
-      newHandlesObj.handles.push(e)
+      handlesObj.handles.push(e)
       visited[e] = true
       handlesSet[e] = true
 
@@ -164,11 +224,11 @@ loadWASM().then((Module) => {
     }
     currentRing = nextRing
   }
-  newHandlesObj.unconstrainedBegin = newHandlesObj.handles.length
+  handlesObj.unconstrainedBegin = handlesObj.handles.length
 
 
   // 800
-  while(newHandlesObj.handles.length < 600) {
+  while(handlesObj.handles.length < 600) {
 
     var nextRing = []
 
@@ -178,7 +238,7 @@ loadWASM().then((Module) => {
       if(visited[e])
         continue
 
-      newHandlesObj.handles.push(e)
+      handlesObj.handles.push(e)
       visited[e] = true
       unconstrainedSet[e] = true
 
@@ -191,7 +251,7 @@ loadWASM().then((Module) => {
     currentRing = nextRing
   }
 
-  newHandlesObj.stationaryBegin = newHandlesObj.handles.length
+  handlesObj.stationaryBegin = handlesObj.handles.length
 
   var staticVertices = []
   for(var i = 0; i < currentRing.length; ++i) {
@@ -201,7 +261,7 @@ loadWASM().then((Module) => {
       continue
 
     staticVertices.push(e)
-    newHandlesObj.handles.push(e)
+    handlesObj.handles.push(e)
 
     visited[e] = true
   }
@@ -281,77 +341,69 @@ loadWASM().then((Module) => {
   var copyBunny = JSON.parse(JSON.stringify(bunny))
 
 
-  var newHandlesObj = {
+  var handlesObj = {
     handles: []
   }
 
   for(var i = 0; i < handles.length; ++i) {
-    newHandlesObj.handles.push(handles[i])
+    handlesObj.handles.push(handles[i])
   }
-  newHandlesObj.unconstrainedBegin = newHandlesObj.handles.length
+  handlesObj.unconstrainedBegin = handlesObj.handles.length
 
   for(var i = 0; i < unconstrained.length; ++i) {
-    newHandlesObj.handles.push(unconstrained[i])
+    handlesObj.handles.push(unconstrained[i])
   }
-  newHandlesObj.stationaryBegin = newHandlesObj.handles.length
+  handlesObj.stationaryBegin = handlesObj.handles.length
 
   for(var i = 0; i < stationary.length; ++i) {
-    newHandlesObj.handles.push(stationary[i])
+    handlesObj.handles.push(stationary[i])
   }
 */
 
-
-
-
-  var cellsArr = new Int32Array(bunny.cells.length * 3);
-  var ia = 0
-  for(var ic = 0; ic < bunny.cells.length; ++ic) {
-    var c = bunny.cells[ic]
-    cellsArr[ia++] = c[0]
-    cellsArr[ia++] = c[1]
-    cellsArr[ia++] = c[2]
-  }
-  var nDataBytes = cellsArr.length * cellsArr.BYTES_PER_ELEMENT;
-  var cellsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
-  cellsHeap.set(new Uint8Array(cellsArr.buffer));
-
-  var positionsArr = new Float64Array(bunny.positions.length * 3);
-  var ia = 0
-  for(var ic = 0; ic < bunny.positions.length; ++ic) {
-    var c = bunny.positions[ic]
-    positionsArr[ia++] = c[0]
-    positionsArr[ia++] = c[1]
-    positionsArr[ia++] = c[2]
-  }
-  var nDataBytes = positionsArr.length * positionsArr.BYTES_PER_ELEMENT;
-  var positionsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
-  positionsHeap.set(new Uint8Array(positionsArr.buffer));
-
-  var handlesArr = new Int32Array(newHandlesObj.handles);
+  var handlesArr = new Int32Array(handlesObj.handles);
   var nDataBytes = handlesArr.length * handlesArr.BYTES_PER_ELEMENT;
   var handlesHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
   handlesHeap.set(new Uint8Array(handlesArr.buffer));
 
+
+  var bunnyColors = []
+
+  for(var i = 0; i < bunnyNormals.length; ++i) {
+      bunnyColors[i] = [0.4, 0.4, 0.4];
+
+    if(handlesSet[i] === true) {
+      bunnyColors[i] = [0.3, 0.3, 0.0];
+    } else if(unconstrainedSet[i] === true) {
+      bunnyColors[i] = [0.0, 0.0, 0.3];
+    } else {
+      bunnyColors[i] = [0.0, 0.0, 0.0];
+    }
+  }
+  colorBuffer.subdata(bunnyColors)
 
   prepareDeform(
     cellsHeap.byteOffset, bunny.cells.length*3,
 
     positionsHeap.byteOffset, bunny.positions.length*3,
 
-    handlesHeap.byteOffset, newHandlesObj.handles.length,
+    handlesHeap.byteOffset, handlesObj.handles.length,
 
-    newHandlesObj.stationaryBegin, newHandlesObj.unconstrainedBegin,
+    handlesObj.stationaryBegin, handlesObj.unconstrainedBegin,
     true
   )
+
+
+
+
+
+
+
+
+
 
   //testfunction(dataHeap.byteOffset, data.length);
 
   // set current handle that we're manipulating.
-  var handlesObj = newHandlesObj
-  const canvas = document.body.appendChild(document.createElement('canvas'))
-  const regl = require('regl')({canvas: canvas})
-
-  var str = `<a href="https://github.com/mikolalysenko/laplacian-deformation"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/82b228a3648bf44fc1163ef44c62fcc60081495e/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_red_aa0000.png"></a>`
 
 
       /*
@@ -367,7 +419,7 @@ loadWASM().then((Module) => {
     {type: 'checkbox', label: 'render_handles', initial: renderHandles},
     {type: 'button', label: 'Reset Mesh', action: function () {
 //      bunny = JSON.parse(JSON.stringify(copyBunny))
-      var handlesObj = newHandlesObj
+      var handlesObj = handlesObj
       doDeform([+0.0, 0.2, 0.0])
       positionBuffer.subdata(bunny.positions)
     }},
@@ -387,30 +439,7 @@ loadWASM().then((Module) => {
   div.appendChild(par)
   document.body.appendChild(div)
 
-  /*
-    Create command for drawing bunny.
-  */
-  const positionBuffer = regl.buffer({
-    length: bunny.positions.length * 3 * 4,
-    type: 'float',
-    usage: 'dynamic'
-  })
 
-  var bunnyNormals = normals(bunny.cells, bunny.positions)
-  var bunnyColors = []
-
-  for(var i = 0; i < bunnyNormals.length; ++i) {
-      bunnyColors[i] = [0.4, 0.4, 0.4];
-
-    if(handlesSet[i] === true) {
-      bunnyColors[i] = [0.3, 0.3, 0.0];
-    } else if(unconstrainedSet[i] === true) {
-      bunnyColors[i] = [0.0, 0.0, 0.3];
-    } else {
-      bunnyColors[i] = [0.0, 0.0, 0.0];
-    }
-
-  }
 
 
   var drawBunny = regl({
@@ -469,7 +498,11 @@ loadWASM().then((Module) => {
       },
 
       normal: bunnyNormals,
-      color: bunnyColors,
+
+      color: {
+        buffer: colorBuffer,
+        normalized: true
+      },
 
     },
 
