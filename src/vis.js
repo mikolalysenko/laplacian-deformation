@@ -2,22 +2,15 @@ const normals = require('angle-normals')
 const mat4 = require('gl-mat4')
 const vec3 = require('gl-vec3')
 var control = require('control-panel')
-//var bunny = require('bunny')
-//var bunny = require('../mytext')
-//var bunny = require('stanford-dragon/3')
 var bunny = require('../bumps_dec.js')
 
 const fit = require('canvas-fit')
 var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
 //var Module = require('../out2.js')
 
-
-// loadWasm.js
-Module = {};    // create the Module object to hold the wasm code
+Module = {};
 loadWASM = () => {
-
   return new Promise((resolve) => {
-
     fetch('out.wasm')    // load the .wasm file
       .then(response => response.arrayBuffer())
       .then((buffer) => {    //return ArrayBuffer
@@ -114,6 +107,106 @@ loadWASM().then((Module) => {
     p[2] *= s
   }
 
+  var adj = []
+  for(var i = 0; i < bunny.positions.length; ++i) {
+    adj[i] = []
+  }
+
+  for(var i = 0; i < bunny.cells.length; ++i) {
+    var c = bunny.cells[i]
+    for(var j = 0; j < 3; ++j) {
+      var a = c[j+0]
+      var b = c[(j+1) % 3]
+      adj[a].push(b)
+    }
+  }
+
+
+  var visited = []
+  for(var i = 0; i < bunny.positions.length; ++i) {
+    visited[i] = false
+  }
+
+  var newHandlesObj = {
+    handles: []
+  }
+
+  var currentRing = [1900]
+
+  var unconstrainedSet = []
+  var handlesSet = []
+
+  for(var i = 0; i < bunny.positions.length; ++i) {
+    unconstrainedSet[i] = false
+    handlesSet[i] = false
+  }
+
+  // FIRST HANDLES.
+  while(newHandlesObj.handles.length < 50) {
+
+    var nextRing = []
+
+    for(var i = 0; i < currentRing.length; ++i) {
+      var e = currentRing[i]
+
+      if(visited[e])
+        continue
+
+      newHandlesObj.handles.push(e)
+      visited[e] = true
+      handlesSet[e] = true
+
+      var adjs = adj[e]
+
+      for(var j = 0; j < adjs.length; ++j) {
+        nextRing.push(adjs[j])
+      }
+    }
+    currentRing = nextRing
+  }
+  newHandlesObj.unconstrainedBegin = newHandlesObj.handles.length
+
+
+  // 800
+  while(newHandlesObj.handles.length < 600) {
+
+    var nextRing = []
+
+    for(var i = 0; i < currentRing.length; ++i) {
+      var e = currentRing[i]
+
+      if(visited[e])
+        continue
+
+      newHandlesObj.handles.push(e)
+      visited[e] = true
+      unconstrainedSet[e] = true
+
+
+      var adjs = adj[e]
+      for(var j = 0; j < adjs.length; ++j) {
+        nextRing.push(adjs[j])
+      }
+    }
+    currentRing = nextRing
+  }
+
+  newHandlesObj.stationaryBegin = newHandlesObj.handles.length
+
+  var staticVertices = []
+  for(var i = 0; i < currentRing.length; ++i) {
+    var e = currentRing[i]
+
+    if(visited[e])
+      continue
+
+    staticVertices.push(e)
+    newHandlesObj.handles.push(e)
+
+    visited[e] = true
+  }
+
+  /*
   var cs = []
   var unconstrained = []
   var stationary = []
@@ -183,22 +276,9 @@ loadWASM().then((Module) => {
     }
   }
 
+
   // copy of the mesh, that we use when restoring the mesh.
   var copyBunny = JSON.parse(JSON.stringify(bunny))
-
-  var adj = []
-  for(var i = 0; i < bunny.positions.length; ++i) {
-    adj[i] = []
-  }
-
-  for(var i = 0; i < bunny.cells.length; ++i) {
-    var c = bunny.cells[i]
-    for(var j = 0; j < 3; ++j) {
-      var a = c[j+0]
-      var b = c[(j+1) % 3]
-      adj[a].push(b)
-    }
-  }
 
 
   var newHandlesObj = {
@@ -218,6 +298,10 @@ loadWASM().then((Module) => {
   for(var i = 0; i < stationary.length; ++i) {
     newHandlesObj.handles.push(stationary[i])
   }
+*/
+
+
+
 
   var cellsArr = new Int32Array(bunny.cells.length * 3);
   var ia = 0
@@ -248,6 +332,7 @@ loadWASM().then((Module) => {
   var handlesHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
   handlesHeap.set(new Uint8Array(handlesArr.buffer));
 
+
   prepareDeform(
     cellsHeap.byteOffset, bunny.cells.length*3,
 
@@ -258,12 +343,8 @@ loadWASM().then((Module) => {
     newHandlesObj.stationaryBegin, newHandlesObj.unconstrainedBegin,
     true
   )
+
   //testfunction(dataHeap.byteOffset, data.length);
-
-
-
-  // input we export to C++.
-  //newHandlesObj.doDeform = prepareDeform(bunny.cells, bunny.positions, newHandlesObj)
 
   // set current handle that we're manipulating.
   var handlesObj = newHandlesObj
@@ -285,9 +366,9 @@ loadWASM().then((Module) => {
   var panel = control([
     {type: 'checkbox', label: 'render_handles', initial: renderHandles},
     {type: 'button', label: 'Reset Mesh', action: function () {
-      bunny = JSON.parse(JSON.stringify(copyBunny))
+//      bunny = JSON.parse(JSON.stringify(copyBunny))
       var handlesObj = newHandlesObj
-      doDeform([+0.0, 1.0, 0.0])
+      doDeform([+0.0, 0.2, 0.0])
       positionBuffer.subdata(bunny.positions)
     }},
   ],
@@ -319,14 +400,18 @@ loadWASM().then((Module) => {
   var bunnyColors = []
 
   for(var i = 0; i < bunnyNormals.length; ++i) {
-    if(stationarySet[i] === true) {
       bunnyColors[i] = [0.4, 0.4, 0.4];
-    } else if(handlesSet[i] === true) {
-      bunnyColors[i] = [0.8, 0.8, 0.0];
+
+    if(handlesSet[i] === true) {
+      bunnyColors[i] = [0.3, 0.3, 0.0];
+    } else if(unconstrainedSet[i] === true) {
+      bunnyColors[i] = [0.0, 0.0, 0.3];
     } else {
-      bunnyColors[i] = [0.0, 0.0, 0.7];
+      bunnyColors[i] = [0.0, 0.0, 0.0];
     }
+
   }
+
 
   var drawBunny = regl({
     vert: `
@@ -358,7 +443,7 @@ loadWASM().then((Module) => {
 
     void main() {
 
-      vec3 color = vColor;
+      vec3 color = vColor + vec3(0.0, 0.0, 0.4);
 
       vec3 lp = uEyePos;
 
@@ -440,7 +525,7 @@ loadWASM().then((Module) => {
 
     positionBuffer.subdata(bunny.positions)
   }
-  doDeform([+0.0, +0.4, 0.0])
+//  doDeform([+0.0, +0.4, 0.0])
   //doDeform([+0.0, +0.0, 0.0])
 
   positionBuffer.subdata(bunny.positions)
@@ -519,7 +604,7 @@ loadWASM().then((Module) => {
 
     uniform vec3 color;
     void main() {
-      gl_FragColor = vec4(color, 1.0);
+      gl_FragColor = vec4(color + vec3(0.0, 0.0, 1.0), 1.0);
     }`,
 
     attributes: {
@@ -649,7 +734,6 @@ loadWASM().then((Module) => {
       prevPos = p
       prevMousePos = mousePos
     }
-
 
     if(movecamera) {
       camera.tick()
