@@ -3,6 +3,7 @@ const mat4 = require('gl-mat4')
 const vec3 = require('gl-vec3')
 var control = require('control-panel')
 var bunny = require('../bumps_dec.js')
+var rayTriIntersect = require('ray-triangle-intersection');
 
 const fit = require('canvas-fit')
 var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
@@ -13,6 +14,7 @@ var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
 const regl = require('regl')({canvas: canvas, extensions: ['oes_texture_float']})
 
   var str = `<a href="https://github.com/mikolalysenko/laplacian-deformation"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/82b228a3648bf44fc1163ef44c62fcc60081495e/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_red_aa0000.png"></a>`
+
 
 
 Module = {};
@@ -57,6 +59,7 @@ loadWASM().then((Module) => {
       'number', // outPositions
     ]
   );
+
 
 
 
@@ -399,6 +402,7 @@ loadWASM().then((Module) => {
 
   selectHandle(1900)
 //  selectHandle(200)
+  var dragTarget = 1900
 
 
 
@@ -632,11 +636,16 @@ loadWASM().then((Module) => {
   }
 
   var isDragging = false
+  var isPicking = false
 
   var movecamera = false
 
   window.onkeydown = function(e) {
     var key = e.keyCode ? e.keyCode : e.which;
+
+    if (key == 84) { // t
+      isPicking = true
+    }
 
     if (key == 81) {
       movecamera = true
@@ -655,6 +664,9 @@ loadWASM().then((Module) => {
     if (key == 81) {
       movecamera = false
     }
+    if (key == 84) {
+      isPicking = false
+    }
   }
 
   var prevPos = null
@@ -665,8 +677,33 @@ loadWASM().then((Module) => {
     When clicking mouse, pick handle that is near enough to mouse, and closest to the camera.
   */
   function mousedown() {
-    if(!movecamera) {
+    if(isPicking) {
+      console.log("CLICK")
 
+      var ret = getCameraRay()
+      var d = ret[0]
+      var o = ret[1]
+
+      for(var i = 0; i < bunny.cells.length; ++i) {
+        var c = bunny.cells[i]
+
+        var p0 = bunny.positions[c[0]]
+        var p1 = bunny.positions[c[1]]
+        var p2 = bunny.positions[c[2]]
+
+        if(rayTriIntersect([], o, d, [p0, p1, p2]) != null) {
+//          console.log("INTERSECT")
+          selectHandle(c[0])
+          dragTarget = c[0]
+          break
+        }
+
+      }
+
+    }
+
+    if(!isPicking && !movecamera) {
+      isDragging = true
     }
   }
 
@@ -717,8 +754,7 @@ loadWASM().then((Module) => {
 
       var mousePos = screenspaceMousePos()
 
-      // plane point, and normal.
-      var pr0 = bunny.positions[handlesObj.handles[0]]
+      var pr0 = bunny.positions[dragTarget]
       var pn = [o[0] - pr0[0], o[1] - pr0[1], o[2] - pr0[2]]
 
       vec3.normalize(pn, pn)
@@ -732,6 +768,9 @@ loadWASM().then((Module) => {
         var diff = vec3.subtract([],
                                  [mousePos[0], mousePos[1], 0],
                                  [prevMousePos[0], prevMousePos[1], 0])
+
+        console.log("is dragging! ", diff)
+
         if(vec3.length(diff) < 0.001) {
 
         } else {
@@ -750,6 +789,4 @@ loadWASM().then((Module) => {
       camera.tick()
     }
   })
-
-
 })
