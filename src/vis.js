@@ -3,8 +3,13 @@ const mat4 = require('gl-mat4')
 const vec3 = require('gl-vec3')
 var control = require('control-panel')
 //var bunny = require('../bumps_dec.js')
-//var bunny = require('stanford-dragon/3')
-var bunny = require('bunny')
+//var bunny = require('stanford-dragon/2')
+//var bunny = require('../bunny.json')
+var bunny = require('../Armadillo.json')
+//var bunny = require('bunny')
+
+//console.log(bunny)
+console.log(bunny)
 
 var rayTriIntersect = require('ray-triangle-intersection');
 
@@ -17,8 +22,6 @@ var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
 const regl = require('regl')({canvas: canvas, extensions: ['oes_texture_float']})
 
   var str = `<a href="https://github.com/mikolalysenko/laplacian-deformation"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/82b228a3648bf44fc1163ef44c62fcc60081495e/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_red_aa0000.png"></a>`
-
-
 
 Module = {};
 loadWASM = () => {
@@ -164,6 +167,7 @@ loadWASM().then((Module) => {
 
 
 
+  console.log("position buffe len: ", bunny.positions.length * 3 * 4)
   /*
     Create command for drawing bunny.
   */
@@ -211,7 +215,7 @@ loadWASM().then((Module) => {
     }
 
     // FIRST HANDLES.
-    while(handlesObj.handles.length < 150) {
+    while(handlesObj.handles.length < 300) {
 
       var nextRing = []
 
@@ -237,7 +241,7 @@ loadWASM().then((Module) => {
 
 
     // 800
-    while(handlesObj.handles.length < 500) {
+    while(handlesObj.handles.length < 5100) {
 
       var nextRing = []
 
@@ -398,6 +402,7 @@ loadWASM().then((Module) => {
       handlesHeap.byteOffset, handlesObj.handles.length,
 
       handlesObj.stationaryBegin, handlesObj.unconstrainedBegin,
+      //      true
       true
     )
 
