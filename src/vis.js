@@ -5,8 +5,8 @@ var control = require('control-panel')
 //var bunny = require('../bumps_dec.js')
 //var bunny = require('stanford-dragon/2')
 //var bunny = require('../bunny.json')
-var bunny = require('../Armadillo.json')
-//var bunny = require('bunny')
+//var bunny = require('../Armadillo.json')
+var bunny = require('bunny')
 
 //console.log(bunny)
 console.log(bunny)
@@ -22,6 +22,7 @@ var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
 const regl = require('regl')({canvas: canvas, extensions: ['oes_texture_float']})
 
   var str = `<a href="https://github.com/mikolalysenko/laplacian-deformation"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/82b228a3648bf44fc1163ef44c62fcc60081495e/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_red_aa0000.png"></a>`
+
 
 Module = {};
 loadWASM = () => {
@@ -45,6 +46,8 @@ loadWASM = () => {
 
 loadWASM().then((Module) => {
 
+//var Module = require("../out.js")
+
   prepareDeform = Module.cwrap(
     'prepareDeform', null, [
       'number', 'number', // cells, nCells
@@ -65,9 +68,6 @@ loadWASM().then((Module) => {
       'number', // outPositions
     ]
   );
-
-
-
 
   var aabb = {
     min: [+1000, +1000, +1000],
@@ -194,17 +194,19 @@ loadWASM().then((Module) => {
     handles: []
   }
 
+  var prevPos = null
+  var prevMousePos = null
   function selectHandle(mainHandle) {
     var currentRing = [mainHandle]
 
+    prevPos = null
+    prevMousePos = null
     var visited = []
     for(var i = 0; i < bunny.positions.length; ++i) {
       visited[i] = false
     }
 
     handlesObj.handles = []
-
-
 
     var unconstrainedSet = []
     var handlesSet = []
@@ -215,7 +217,7 @@ loadWASM().then((Module) => {
     }
 
     // FIRST HANDLES.
-    while(handlesObj.handles.length < 300) {
+    while(handlesObj.handles.length < 50) {
 
       var nextRing = []
 
@@ -241,7 +243,7 @@ loadWASM().then((Module) => {
 
 
     // 800
-    while(handlesObj.handles.length < 5100) {
+    while(handlesObj.handles.length < 300) {
 
       var nextRing = []
 
@@ -378,7 +380,6 @@ loadWASM().then((Module) => {
     var handlesHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
     handlesHeap.set(new Uint8Array(handlesArr.buffer));
 
-
     var bunnyColors = []
 
     for(var i = 0; i < bunnyNormals.length; ++i) {
@@ -403,7 +404,7 @@ loadWASM().then((Module) => {
 
       handlesObj.stationaryBegin, handlesObj.unconstrainedBegin,
       //      true
-      true
+      false
     )
 
   }
@@ -678,8 +679,7 @@ loadWASM().then((Module) => {
     }
   }
 
-  var prevPos = null
-  var prevMousePos = null
+
   canvas.addEventListener('mousedown', mousedown, false)
 
   /*
