@@ -5,8 +5,8 @@ var control = require('control-panel')
 //var bunny = require('../bumps_dec.js')
 //var bunny = require('stanford-dragon/2')
 //var bunny = require('../bunny.json')
-//var bunny = require('../Armadillo.json')
-var bunny = require('bunny')
+var bunny = require('../Armadillo.json')
+//var bunny = require('bunny')
 
 //console.log(bunny)
 console.log(bunny)
@@ -217,7 +217,7 @@ loadWASM().then((Module) => {
     }
 
     // FIRST HANDLES.
-    while(handlesObj.handles.length < 50) {
+    while(handlesObj.handles.length < 300) {
 
       var nextRing = []
 
@@ -243,7 +243,7 @@ loadWASM().then((Module) => {
 
 
     // 800
-    while(handlesObj.handles.length < 300) {
+    while(handlesObj.handles.length < 8000) {
 
       var nextRing = []
 
@@ -404,7 +404,7 @@ loadWASM().then((Module) => {
 
       handlesObj.stationaryBegin, handlesObj.unconstrainedBegin,
       //      true
-      false
+      true
     )
 
   }
