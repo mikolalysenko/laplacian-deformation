@@ -382,9 +382,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
     var result = doDeform(handlesPositionsArr)
 
     for(var i = 0 ; i < targetMesh.positions.length; i+=1) {
-      targetMesh.positions[i][0] = result[3*i + 0]
-      targetMesh.positions[i][1] = result[3*i + 1]
-      targetMesh.positions[i][2] = result[3*i + 2]
+      targetMesh.positions[i] = result[i]
     }
 
     positionBuffer.subdata(targetMesh.positions)

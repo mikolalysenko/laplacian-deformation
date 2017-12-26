@@ -83,7 +83,12 @@ function doDeform(handlePositions) {
     positionsHeap.byteOffset
   )
 
-  var result = new Float64Array(positionsHeap.buffer, positionsHeap.byteOffset, mesh.positions.length*3)
+  var temp = new Float64Array(positionsHeap.buffer, positionsHeap.byteOffset, mesh.positions.length*3)
+
+  var result = []
+  for(var i = 0; i < mesh.positions.length; ++i) {
+    result[i] = [temp[3*i + 0], temp[3*i + 1], temp[3*i + 2]]
+  }
 
   return result
 }
