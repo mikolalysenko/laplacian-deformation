@@ -127,24 +127,20 @@ function fitMesh(mesh) {
 }
 
 Module = {};
-loadWASM = () => {
-  return new Promise((resolve) => {
-    fetch('out.wasm')    // load the .wasm file
-      .then(response => response.arrayBuffer())
-      .then((buffer) => {    //return ArrayBuffer
-        Module.wasmBinary = buffer;   // assign buffer to Module
+new Promise((resolve) => {
+  fetch('out.wasm')    // load the .wasm file
+    .then(response => response.arrayBuffer())
+    .then((buffer) => {    //return ArrayBuffer
+      Module.wasmBinary = buffer;   // assign buffer to Module
+      const script = document.createElement('script');
+      script.src = 'out.js';   // set script source
 
-        const script = document.createElement('script');
-        script.src = 'out.js';   // set script source
-
-        script.onload = () => {    // once script has loaded
-          resolve(Module);    // return Module
-        };
-        document.body.appendChild(script); // append script to DOM
-      });
-  });
-};
-loadWASM().then((Module) => {
+      script.onload = () => {    // once script has loaded
+        resolve(Module);    // return Module
+      };
+      document.body.appendChild(script); // append script to DOM
+    });
+}).then((Module) => {
   prepareDeform = Module.cwrap(
     'prepareDeform', null, [
       'number', 'number', // cells, nCells
@@ -443,15 +439,10 @@ loadWASM().then((Module) => {
   document.body.appendChild(div)
 
   function doDeform(offset) {
-
-    var numHandles = handlesObj.unconstrainedBegin - 0
-    var numStationary = handlesObj.handles.length - handlesObj.stationaryBegin
-
     if(!handlesObj)
       return
 
-    var nHandlesPositionsArr = numHandles + numStationary
-
+    var nHandlesPositionsArr = handlesObj.handles.length
     var handlesPositionsArr = new Float64Array(nHandlesPositionsArr*3);
 
     var j = 0
