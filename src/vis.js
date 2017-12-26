@@ -215,6 +215,39 @@ new Promise((resolve) => {
     )
   }
 
+  function doDeform(handlePositions, roi) {
+
+    var nHandlesPositionsArr = roi.vertices.length - roi.stationaryBegin + roi.unconstrainedBegin
+
+    var handlesPositionsArr = new Float64Array(nHandlesPositionsArr*3);
+
+    var j = 0
+    for(var i = 0; i < handlePositions.length; ++i) {
+      handlesPositionsArr[j++] = handlePositions[i]
+    }
+
+    for(var i = roi.stationaryBegin; i < (roi.vertices.length); ++i) {
+      handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][0]
+      handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][1]
+      handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][2]
+    }
+    // deform.
+
+    var nDataBytes = handlesPositionsArr.length * handlesPositionsArr.BYTES_PER_ELEMENT;
+    var handlesPositionsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+    handlesPositionsHeap.set(new Uint8Array(handlesPositionsArr.buffer));
+
+    doDeformWrap(
+      handlesPositionsHeap.byteOffset, nHandlesPositionsArr,
+
+      positionsHeap.byteOffset
+    )
+
+    var result = new Float64Array(positionsHeap.buffer, positionsHeap.byteOffset, targetMesh.positions.length*3)
+
+    return result
+  }
+
   targetMesh.normals = normals(targetMesh.cells, targetMesh.positions)
 
   // dynamic buffers that are sent into regl.
@@ -446,15 +479,12 @@ new Promise((resolve) => {
   div.appendChild(par)
   document.body.appendChild(div)
 
-  function doDeform(offset) {
+  function offsetDeform(offset) {
 
     if(!roi)
       return
 
-    var nHandlesPositionsArr = roi.vertices.length - roi.stationaryBegin + roi.unconstrainedBegin
-
-    var handlesPositionsArr = new Float64Array(nHandlesPositionsArr*3);
-
+    var handlesPositionsArr = new Float64Array(roi.unconstrainedBegin*3);
     var j = 0
     for(var i = 0; i < (roi.unconstrainedBegin); ++i) {
       handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][0]  + offset[0]
@@ -462,33 +492,17 @@ new Promise((resolve) => {
       handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][2]  + offset[2]
     }
 
-    for(var i = roi.stationaryBegin; i < (roi.vertices.length); ++i) {
-      handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][0]
-      handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][1]
-      handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][2]
-    }
-    // deform.
-    var nDataBytes = handlesPositionsArr.length * handlesPositionsArr.BYTES_PER_ELEMENT;
-    var handlesPositionsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
-    handlesPositionsHeap.set(new Uint8Array(handlesPositionsArr.buffer));
-
-    doDeformWrap(
-      handlesPositionsHeap.byteOffset, nHandlesPositionsArr,
-
-      positionsHeap.byteOffset
-    )
-
-    var result = new Float64Array(positionsHeap.buffer, positionsHeap.byteOffset, targetMesh.positions.length*3)
+    var result = doDeform(handlesPositionsArr, roi)
 
     for(var i = 0 ; i < targetMesh.positions.length; i+=1) {
       targetMesh.positions[i][0] = result[3*i + 0]
       targetMesh.positions[i][1] = result[3*i + 1]
       targetMesh.positions[i][2] = result[3*i + 2]
-
     }
 
     positionBuffer.subdata(targetMesh.positions)
   }
+
   var projectionMatrix = mat4.perspective([], Math.PI / 4, canvas.width / canvas.height, 0.01, 1000)
 
   var isDragging = false
@@ -620,7 +634,7 @@ new Promise((resolve) => {
 
           var def = vec3.subtract([], p, prevPos)
 
-          doDeform(def)
+          offsetDeform(def)
         }
 
       }
