@@ -439,10 +439,12 @@ new Promise((resolve) => {
   document.body.appendChild(div)
 
   function doDeform(offset) {
+
     if(!handlesObj)
       return
 
-    var nHandlesPositionsArr = handlesObj.handles.length
+    var nHandlesPositionsArr = handlesObj.handles.length - handlesObj.stationaryBegin + handlesObj.unconstrainedBegin
+
     var handlesPositionsArr = new Float64Array(nHandlesPositionsArr*3);
 
     var j = 0
@@ -479,7 +481,6 @@ new Promise((resolve) => {
 
     positionBuffer.subdata(targetMesh.positions)
   }
-
   var projectionMatrix = mat4.perspective([], Math.PI / 4, canvas.width / canvas.height, 0.01, 1000)
 
   var isDragging = false
