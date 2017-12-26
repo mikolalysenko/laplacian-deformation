@@ -6,6 +6,7 @@ var rayTriIntersect = require('ray-triangle-intersection');
 const fit = require('canvas-fit')
 var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
 const canvas = document.body.appendChild(document.createElement('canvas'))
+var mousePosition = require('mouse-position')(canvas)
 const regl = require('regl')({canvas: canvas})
 
 const camera = require('canvas-orbit-camera')(canvas)
@@ -19,6 +20,35 @@ camera.zoom(-29.0)
 var targetMesh = require('../meshes/Armadillo.json')
 //var targetMesh = require('../meshes/bunny.json')
 //var targetMesh = require('bunny')
+
+// get screen space mouse position, in range [-1,+1] for both x and y coordinates.
+function clipspaceMousePos() {
+  return [2.0 * mousePosition[0] / canvas.width - 1.0, -2.0 * mousePosition[1] / canvas.height + 1.0]
+}
+
+// given the view and projection matrices of the camera,
+// get a ray starting from the camera position, heading in the viewing direction of the camera.
+function getCameraRay(viewMatrix, projectionMatrix) {
+  var mousePos = clipspaceMousePos()
+
+  var vp = []
+  mat4.multiply(vp, projectionMatrix, viewMatrix)
+
+  var inverseVp = []
+  mat4.invert(inverseVp, vp)
+
+  var v = []
+  vec3.transformMat4(v, [mousePos[0], mousePos[1], 0], inverseVp)
+
+  var camPos = cameraPosFromViewMatrix([], viewMatrix)
+
+  var d = [v[0] - camPos[0], v[1] - camPos[1], v[2] - camPos[2]]
+  var o = [camPos[0], camPos[1], camPos[2]]
+
+  vec3.normalize(d, d)
+
+  return [d, o] // ray direction, ray origin.
+}
 
 function getAdj(mesh) {
   var adj = []
@@ -438,8 +468,6 @@ loadWASM().then((Module) => {
       handlesPositionsArr[j++] = targetMesh.positions[handlesObj.handles[i]][2]
     }
     // deform.
-    //var d = handlesObj.doDeform(arr, targetMesh.positions)
-
     var nDataBytes = handlesPositionsArr.length * handlesPositionsArr.BYTES_PER_ELEMENT;
     var handlesPositionsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
     handlesPositionsHeap.set(new Uint8Array(handlesPositionsArr.buffer));
@@ -462,11 +490,9 @@ loadWASM().then((Module) => {
     positionBuffer.subdata(targetMesh.positions)
   }
   doDeform([+0.0, +0.0, 0.0])
-  //doDeform([+0.0, +0.0, 0.0])
 
   positionBuffer.subdata(targetMesh.positions)
 
-  var mp = require('mouse-position')(canvas)
   var projectionMatrix = mat4.perspective([], Math.PI / 4, canvas.width / canvas.height, 0.01, 1000)
   const globalScope = regl({
     uniforms: {
@@ -482,33 +508,7 @@ loadWASM().then((Module) => {
     }
   })
 
-  function screenspaceMousePos() {
-    return [2.0 * mp[0] / canvas.width - 1.0, -2.0 * mp[1] / canvas.height + 1.0]
-  }
 
-  // get ray starting from camera position, heading in the viewing direction of the camera.
-  function getCameraRay() {
-    var mousePos = screenspaceMousePos()
-
-    var view = camera.view()
-    var vp = []
-    mat4.multiply(vp, projectionMatrix, view)
-
-    var inverseVp = []
-    mat4.invert(inverseVp, vp)
-
-    var v = []
-    vec3.transformMat4(v, [mousePos[0], mousePos[1], 0], inverseVp)
-
-    var camPos = cameraPosFromViewMatrix([], view)
-
-    var d = [v[0] - camPos[0], v[1] - camPos[1], v[2] - camPos[2]]
-    var o = [camPos[0], camPos[1], camPos[2]]
-
-    vec3.normalize(d, d)
-
-    return [d, o] // ray direction, ray origin.
-  }
 
   var isDragging = false
   var isPicking = false
@@ -554,7 +554,7 @@ loadWASM().then((Module) => {
     if(isPicking) {
       console.log("CLICK")
 
-      var ret = getCameraRay()
+      var ret = getCameraRay(camera.view(), projectionMatrix)
       var d = ret[0]
       var o = ret[1]
 
@@ -585,7 +585,7 @@ loadWASM().then((Module) => {
 
   canvas.addEventListener('mouseup', mouseup, false)
   function mouseup() {
-    var mousePos = screenspaceMousePos()
+    var mousePos = clipspaceMousePos()
 
     isDragging = false
   }
@@ -623,11 +623,11 @@ loadWASM().then((Module) => {
     // the main handle should follow the mouse.
     // the below calculations ensure this.
     if(isDragging) {
-      var ret = getCameraRay()
+      var ret = getCameraRay(camera.view(), projectionMatrix)
       var d = ret[0]
       var o = ret[1]
 
-      var mousePos = screenspaceMousePos()
+      var mousePos = clipspaceMousePos()
 
       var pr0 = targetMesh.positions[dragTarget]
       var pn = [o[0] - pr0[0], o[1] - pr0[1], o[2] - pr0[2]]
