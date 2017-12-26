@@ -8,11 +8,69 @@ var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
 const canvas = document.body.appendChild(document.createElement('canvas'))
 const regl = require('regl')({canvas: canvas})
 
-//var bunny = require('stanford-dragon/2')
-var bunny = require('../meshes/Armadillo.json')
-//var bunny = require('../meshes/bunny.json')
-//var bunny = require('bunny')
+//var targetMesh = require('stanford-dragon/2')
+var targetMesh = require('../meshes/Armadillo.json')
+//var targetMesh = require('../meshes/bunny.json')
+//var targetMesh = require('bunny')
 
+
+function fitMesh(mesh) {
+  var aabb = {
+    min: [+1000, +1000, +1000],
+    max: [-1000, -1000, -1000],
+  }
+
+  /*
+    Find AABB for mesh.
+  */
+  for(var j = 0; j < mesh.positions.length; ++j) {
+    var p = mesh.positions[j]
+
+    for(var i = 0; i < 3; ++i) {
+      if(p[i] < aabb.min[i]) {
+        aabb.min[i] = p[i]
+      }
+      if(p[i] > aabb.max[i]) {
+        aabb.max[i] = p[i]
+      }
+    }
+  }
+
+  // find longest side of AABB.
+  var il = 0
+  for(var i = 1; i < 3; ++i) {
+    if( (aabb.max[i]-aabb.min[i]) > aabb.max[il]-aabb.min[il]) {
+      il = i
+    }
+  }
+
+  /*
+    Now that we have the AABB, we can use that info to the center the mesh,
+    and scale it so that it fits in the unit cube.
+
+    We do all those things for the purpose of normalizing the mesh, so
+    that it is fully visible to the camera.
+  */
+  var s = 1.0 / (aabb.max[il]-aabb.min[il])
+  var t = [
+      -0.5 * (aabb.min[0] + aabb.max[0]),
+      -0.5 * (aabb.min[1] + aabb.max[1]),
+      -0.5 * (aabb.min[2] + aabb.max[2]),
+  ]
+
+  for(var j = 0; j < mesh.positions.length; ++j) {
+
+    var p = mesh.positions[j]
+
+    p[0] += t[0]
+    p[1] += t[1]
+    p[2] += t[2]
+
+    p[0] *= s
+    p[1] *= s
+    p[2] *= s
+  }
+}
 
 Module = {};
 loadWASM = () => {
@@ -53,69 +111,15 @@ loadWASM().then((Module) => {
     ]
   );
 
-  var aabb = {
-    min: [+1000, +1000, +1000],
-    max: [-1000, -1000, -1000],
-  }
-
-  /*
-    Find AABB for mesh.
-  */
-  for(var j = 0; j < bunny.positions.length; ++j) {
-    var p = bunny.positions[j]
-
-    for(var i = 0; i < 3; ++i) {
-      if(p[i] < aabb.min[i]) {
-        aabb.min[i] = p[i]
-      }
-      if(p[i] > aabb.max[i]) {
-        aabb.max[i] = p[i]
-      }
-    }
-  }
-
-  // find longest side of AABB.
-  var il = 0
-  for(var i = 1; i < 3; ++i) {
-    if( (aabb.max[i]-aabb.min[i]) > aabb.max[il]-aabb.min[il]) {
-      il = i
-    }
-  }
-
-  /*
-    Now that we have the AABB, we can use that info to the center the mesh,
-    and scale it so that it fits in the unit cube.
-
-    We do all those things for the purpose of normalizing the mesh, so
-    that it is fully visible to the camera.
-  */
-  var s = 1.0 / (aabb.max[il]-aabb.min[il])
-  var t = [
-      -0.5 * (aabb.min[0] + aabb.max[0]),
-      -0.5 * (aabb.min[1] + aabb.max[1]),
-      -0.5 * (aabb.min[2] + aabb.max[2]),
-  ]
-
-  for(var j = 0; j < bunny.positions.length; ++j) {
-
-    var p = bunny.positions[j]
-
-    p[0] += t[0]
-    p[1] += t[1]
-    p[2] += t[2]
-
-    p[0] *= s
-    p[1] *= s
-    p[2] *= s
-  }
+  fitMesh(targetMesh)
 
   var adj = []
-  for(var i = 0; i < bunny.positions.length; ++i) {
+  for(var i = 0; i < targetMesh.positions.length; ++i) {
     adj[i] = []
   }
 
-  for(var i = 0; i < bunny.cells.length; ++i) {
-    var c = bunny.cells[i]
+  for(var i = 0; i < targetMesh.cells.length; ++i) {
+    var c = targetMesh.cells[i]
     for(var j = 0; j < 3; ++j) {
       var a = c[j+0]
       var b = c[(j+1) % 3]
@@ -123,10 +127,10 @@ loadWASM().then((Module) => {
     }
   }
 
-  var cellsArr = new Int32Array(bunny.cells.length * 3);
+  var cellsArr = new Int32Array(targetMesh.cells.length * 3);
   var ia = 0
-  for(var ic = 0; ic < bunny.cells.length; ++ic) {
-    var c = bunny.cells[ic]
+  for(var ic = 0; ic < targetMesh.cells.length; ++ic) {
+    var c = targetMesh.cells[ic]
     cellsArr[ia++] = c[0]
     cellsArr[ia++] = c[1]
     cellsArr[ia++] = c[2]
@@ -135,10 +139,10 @@ loadWASM().then((Module) => {
   var cellsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
   cellsHeap.set(new Uint8Array(cellsArr.buffer));
 
-  var positionsArr = new Float64Array(bunny.positions.length * 3);
+  var positionsArr = new Float64Array(targetMesh.positions.length * 3);
   var ia = 0
-  for(var ic = 0; ic < bunny.positions.length; ++ic) {
-    var c = bunny.positions[ic]
+  for(var ic = 0; ic < targetMesh.positions.length; ++ic) {
+    var c = targetMesh.positions[ic]
     positionsArr[ia++] = c[0]
     positionsArr[ia++] = c[1]
     positionsArr[ia++] = c[2]
@@ -148,24 +152,24 @@ loadWASM().then((Module) => {
   positionsHeap.set(new Uint8Array(positionsArr.buffer));
 
   /*
-    Create command for drawing bunny.
+    Create command for drawing targetMesh.
   */
   const positionBuffer = regl.buffer({
-    length: bunny.positions.length * 3 * 4,
+    length: targetMesh.positions.length * 3 * 4,
     type: 'float',
     usage: 'dynamic'
   })
 
   const colorBuffer = regl.buffer({
-    length: bunny.positions.length * 3 * 4,
+    length: targetMesh.positions.length * 3 * 4,
     type: 'float',
     usage: 'dynamic'
   })
 
-  var bunnyNormals = normals(bunny.cells, bunny.positions)
+  var bunnyNormals = normals(targetMesh.cells, targetMesh.positions)
 
   var bunnyIds = []
-  for(var i = 0; i < bunny.positions.length; ++i) {
+  for(var i = 0; i < targetMesh.positions.length; ++i) {
     bunnyIds[i] = i + 0.0
   }
 
@@ -182,7 +186,7 @@ loadWASM().then((Module) => {
     prevPos = null
     prevMousePos = null
     var visited = []
-    for(var i = 0; i < bunny.positions.length; ++i) {
+    for(var i = 0; i < targetMesh.positions.length; ++i) {
       visited[i] = false
     }
 
@@ -191,7 +195,7 @@ loadWASM().then((Module) => {
     var unconstrainedSet = []
     var handlesSet = []
 
-    for(var i = 0; i < bunny.positions.length; ++i) {
+    for(var i = 0; i < targetMesh.positions.length; ++i) {
       unconstrainedSet[i] = false
       handlesSet[i] = false
     }
@@ -282,9 +286,9 @@ loadWASM().then((Module) => {
     colorBuffer.subdata(bunnyColors)
 
     prepareDeform(
-      cellsHeap.byteOffset, bunny.cells.length*3,
+      cellsHeap.byteOffset, targetMesh.cells.length*3,
 
-      positionsHeap.byteOffset, bunny.positions.length*3,
+      positionsHeap.byteOffset, targetMesh.positions.length*3,
 
       handlesHeap.byteOffset, handlesObj.handles.length,
 
@@ -312,11 +316,11 @@ loadWASM().then((Module) => {
   var panel = control([
     {type: 'checkbox', label: 'render_handles', initial: renderHandles},
     {type: 'button', label: 'Reset Mesh', action: function () {
-      //      bunny = JSON.parse(JSON.stringify(copyBunny))
+      //      targetMesh = JSON.parse(JSON.stringify(copyBunny))
 
       //var handlesObj = handlesObj
       //doDeform([+0.0, 0.2, 0.0])
-      //positionBuffer.subdata(bunny.positions)
+      //positionBuffer.subdata(targetMesh.positions)
       selectHandle(200)
 
     }},
@@ -400,7 +404,7 @@ loadWASM().then((Module) => {
 
     },
 
-    elements: bunny.cells,
+    elements: targetMesh.cells,
     primitive: 'triangles'
   })
 
@@ -420,18 +424,18 @@ loadWASM().then((Module) => {
 
     var j = 0
     for(var i = 0; i < (handlesObj.unconstrainedBegin); ++i) {
-      handlesPositionsArr[j++] = bunny.positions[handlesObj.handles[i]][0]  + offset[0]
-      handlesPositionsArr[j++] = bunny.positions[handlesObj.handles[i]][1]  + offset[1]
-      handlesPositionsArr[j++] = bunny.positions[handlesObj.handles[i]][2]  + offset[2]
+      handlesPositionsArr[j++] = targetMesh.positions[handlesObj.handles[i]][0]  + offset[0]
+      handlesPositionsArr[j++] = targetMesh.positions[handlesObj.handles[i]][1]  + offset[1]
+      handlesPositionsArr[j++] = targetMesh.positions[handlesObj.handles[i]][2]  + offset[2]
     }
 
     for(var i = handlesObj.stationaryBegin; i < (handlesObj.handles.length); ++i) {
-      handlesPositionsArr[j++] = bunny.positions[handlesObj.handles[i]][0]
-      handlesPositionsArr[j++] = bunny.positions[handlesObj.handles[i]][1]
-      handlesPositionsArr[j++] = bunny.positions[handlesObj.handles[i]][2]
+      handlesPositionsArr[j++] = targetMesh.positions[handlesObj.handles[i]][0]
+      handlesPositionsArr[j++] = targetMesh.positions[handlesObj.handles[i]][1]
+      handlesPositionsArr[j++] = targetMesh.positions[handlesObj.handles[i]][2]
     }
     // deform.
-    //var d = handlesObj.doDeform(arr, bunny.positions)
+    //var d = handlesObj.doDeform(arr, targetMesh.positions)
 
     var nDataBytes = handlesPositionsArr.length * handlesPositionsArr.BYTES_PER_ELEMENT;
     var handlesPositionsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
@@ -443,21 +447,21 @@ loadWASM().then((Module) => {
       positionsHeap.byteOffset
     )
 
-    var result = new Float64Array(positionsHeap.buffer, positionsHeap.byteOffset, bunny.positions.length*3)
+    var result = new Float64Array(positionsHeap.buffer, positionsHeap.byteOffset, targetMesh.positions.length*3)
 
-    for(var i = 0 ; i < bunny.positions.length; i+=1) {
-      bunny.positions[i][0] = result[3*i + 0]
-      bunny.positions[i][1] = result[3*i + 1]
-      bunny.positions[i][2] = result[3*i + 2]
+    for(var i = 0 ; i < targetMesh.positions.length; i+=1) {
+      targetMesh.positions[i][0] = result[3*i + 0]
+      targetMesh.positions[i][1] = result[3*i + 1]
+      targetMesh.positions[i][2] = result[3*i + 2]
 
     }
 
-    positionBuffer.subdata(bunny.positions)
+    positionBuffer.subdata(targetMesh.positions)
   }
   doDeform([+0.0, +0.0, 0.0])
   //doDeform([+0.0, +0.0, 0.0])
 
-  positionBuffer.subdata(bunny.positions)
+  positionBuffer.subdata(targetMesh.positions)
 
   const camera = require('canvas-orbit-camera')(canvas)
   window.addEventListener('resize', fit(canvas), false)
@@ -562,12 +566,12 @@ loadWASM().then((Module) => {
       var d = ret[0]
       var o = ret[1]
 
-      for(var i = 0; i < bunny.cells.length; ++i) {
-        var c = bunny.cells[i]
+      for(var i = 0; i < targetMesh.cells.length; ++i) {
+        var c = targetMesh.cells[i]
 
-        var p0 = bunny.positions[c[0]]
-        var p1 = bunny.positions[c[1]]
-        var p2 = bunny.positions[c[2]]
+        var p0 = targetMesh.positions[c[0]]
+        var p1 = targetMesh.positions[c[1]]
+        var p2 = targetMesh.positions[c[2]]
 
         if(rayTriIntersect([], o, d, [p0, p1, p2]) != null) {
           //          console.log("INTERSECT")
@@ -609,7 +613,7 @@ loadWASM().then((Module) => {
       if(handlesObj != null) {
         for(var i = 0; i < handlesObj.handles.length; ++i) {
           //      if(i != 3) continue
-          var handle = bunny.positions[handlesObj.handles[i]]
+          var handle = targetMesh.positions[handlesObj.handles[i]]
 
           var c = [0.5, 0.5, 0.5]
 
@@ -634,7 +638,7 @@ loadWASM().then((Module) => {
 
       var mousePos = screenspaceMousePos()
 
-      var pr0 = bunny.positions[dragTarget]
+      var pr0 = targetMesh.positions[dragTarget]
       var pn = [o[0] - pr0[0], o[1] - pr0[1], o[2] - pr0[2]]
 
       vec3.normalize(pn, pn)
