@@ -19,14 +19,13 @@ const fit = require('canvas-fit')
 var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
 //var Module = require('../out2.js')
 
-
-  const canvas = document.body.appendChild(document.createElement('canvas'))
+const canvas = document.body.appendChild(document.createElement('canvas'))
 const regl = require('regl')({canvas: canvas, extensions: ['oes_texture_float']})
 
-  var str = `<a href="https://github.com/mikolalysenko/laplacian-deformation"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/82b228a3648bf44fc1163ef44c62fcc60081495e/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_red_aa0000.png"></a>`
+var str = `<a href="https://github.com/mikolalysenko/laplacian-deformation"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/82b228a3648bf44fc1163ef44c62fcc60081495e/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_red_aa0000.png"></a>`
 
 
-Module = {};
+    Module = {};
 loadWASM = () => {
   return new Promise((resolve) => {
     fetch('out.wasm')    // load the .wasm file
@@ -47,8 +46,6 @@ loadWASM = () => {
 };
 
 loadWASM().then((Module) => {
-
-//var Module = require("../out.js")
 
   prepareDeform = Module.cwrap(
     'prepareDeform', null, [
@@ -416,16 +413,16 @@ loadWASM().then((Module) => {
 
   selectHandle(dragTarget)
 
-//  selectHandle(200)
+  //  selectHandle(200)
 
   //testfunction(dataHeap.byteOffset, data.length);
 
   // set current handle that we're manipulating.
 
-      /*
-        Create GUI
+  /*
+    Create GUI
 
-      */
+  */
   var container = document.createElement('div')
   container.innerHTML = str
   document.body.appendChild(container)
@@ -434,7 +431,7 @@ loadWASM().then((Module) => {
   var panel = control([
     {type: 'checkbox', label: 'render_handles', initial: renderHandles},
     {type: 'button', label: 'Reset Mesh', action: function () {
-//      bunny = JSON.parse(JSON.stringify(copyBunny))
+      //      bunny = JSON.parse(JSON.stringify(copyBunny))
 
       //var handlesObj = handlesObj
       //doDeform([+0.0, 0.2, 0.0])
@@ -695,7 +692,7 @@ loadWASM().then((Module) => {
         var p2 = bunny.positions[c[2]]
 
         if(rayTriIntersect([], o, d, [p0, p1, p2]) != null) {
-//          console.log("INTERSECT")
+          //          console.log("INTERSECT")
           selectHandle(c[0])
           console.log("myand", c[0])
           // 2234
