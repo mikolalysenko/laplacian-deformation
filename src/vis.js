@@ -8,13 +8,20 @@ var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
 const canvas = document.body.appendChild(document.createElement('canvas'))
 const regl = require('regl')({canvas: canvas})
 
+const camera = require('canvas-orbit-camera')(canvas)
+window.addEventListener('resize', fit(canvas), false)
+camera.rotate([0.0, 0.0], [0.0, -0.4])
+camera.rotate([0.0, 0.0], [0.7, 0.0])
+camera.zoom(-29.0)
+
+
 //var targetMesh = require('stanford-dragon/2')
 var targetMesh = require('../meshes/Armadillo.json')
 //var targetMesh = require('../meshes/bunny.json')
 //var targetMesh = require('bunny')
 
 function getAdj(mesh) {
-    var adj = []
+  var adj = []
   for(var i = 0; i < mesh.positions.length; ++i) {
     adj[i] = []
   }
@@ -270,20 +277,19 @@ loadWASM().then((Module) => {
     var handlesHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
     handlesHeap.set(new Uint8Array(handlesArr.buffer));
 
-    var bunnyColors = []
 
+    var colors = []
     for(var i = 0; i < targetMesh.normals.length; ++i) {
-      bunnyColors[i] = [0.4, 0.4, 0.4];
-
+      colors[i] = [0.4, 0.4, 0.4];
       if(handlesSet[i] === true) {
-        bunnyColors[i] = [0.3, 0.3, 0.0];
+        colors[i] = [0.3, 0.3, 0.0];
       } else if(unconstrainedSet[i] === true) {
-        bunnyColors[i] = [0.0, 0.0, 0.3];
+        colors[i] = [0.0, 0.0, 0.3];
       } else {
-        bunnyColors[i] = [0.0, 0.0, 0.0];
+        colors[i] = [0.0, 0.0, 0.0];
       }
     }
-    colorBuffer.subdata(bunnyColors)
+    colorBuffer.subdata(colors)
 
     prepareDeform(
       cellsHeap.byteOffset, targetMesh.cells.length*3,
@@ -293,7 +299,6 @@ loadWASM().then((Module) => {
       handlesHeap.byteOffset, handlesObj.handles.length,
 
       handlesObj.stationaryBegin, handlesObj.unconstrainedBegin,
-      //      true
       true
     )
   }
@@ -461,19 +466,8 @@ loadWASM().then((Module) => {
 
   positionBuffer.subdata(targetMesh.positions)
 
-  const camera = require('canvas-orbit-camera')(canvas)
-  window.addEventListener('resize', fit(canvas), false)
-  camera.rotate([0.0, 0.0], [0.0, -0.4])
-  camera.rotate([0.0, 0.0], [0.7, 0.0])
-
-  camera.zoom(-29.0)
   var mp = require('mouse-position')(canvas)
-  var projectionMatrix = mat4.perspective([],
-                                          Math.PI / 4,
-                                          canvas.width / canvas.height,
-                                          0.01,
-                                          1000)
-
+  var projectionMatrix = mat4.perspective([], Math.PI / 4, canvas.width / canvas.height, 0.01, 1000)
   const globalScope = regl({
     uniforms: {
       view: () => {
