@@ -2,11 +2,9 @@ const normals = require('angle-normals')
 const mat4 = require('gl-mat4')
 const vec3 = require('gl-vec3')
 var control = require('control-panel')
-//var bunny = require('../bumps_dec.json')
 //var bunny = require('stanford-dragon/2')
-//var bunny = require('../bunny.json')
-//var bunny = require('../Armadillo.json')
-var bunny = require('../bunny.json')
+//var bunny = require('../meshes/Armadillo.json')
+var bunny = require('../meshes/bunny.json')
 
 //var bunny = require('bunny')
 
