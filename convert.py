@@ -1,7 +1,7 @@
 s0 = '"positions":['
 s1 = '"cells":['
 
-model = "Armadillo"
+model = "bunny"
 
 with open(model+'.ply') as f:
     c = 0

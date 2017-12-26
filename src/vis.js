@@ -2,10 +2,12 @@ const normals = require('angle-normals')
 const mat4 = require('gl-mat4')
 const vec3 = require('gl-vec3')
 var control = require('control-panel')
-//var bunny = require('../bumps_dec.js')
+//var bunny = require('../bumps_dec.json')
 //var bunny = require('stanford-dragon/2')
 //var bunny = require('../bunny.json')
-var bunny = require('../Armadillo.json')
+//var bunny = require('../Armadillo.json')
+var bunny = require('../bunny.json')
+
 //var bunny = require('bunny')
 
 //console.log(bunny)
@@ -243,7 +245,7 @@ loadWASM().then((Module) => {
 
 
     // 800
-    while(handlesObj.handles.length < 8000) {
+    while(handlesObj.handles.length < 3000) {
 
       var nextRing = []
 
@@ -409,20 +411,12 @@ loadWASM().then((Module) => {
 
   }
 
-  var dragTarget = 1300
+  //  var dragTarget = 2234
+  var dragTarget = 2096
+
   selectHandle(dragTarget)
 
 //  selectHandle(200)
-
-
-
-
-
-
-
-
-
-
 
   //testfunction(dataHeap.byteOffset, data.length);
 
@@ -585,7 +579,7 @@ loadWASM().then((Module) => {
 
     positionBuffer.subdata(bunny.positions)
   }
-//  doDeform([+0.0, +0.4, 0.0])
+  doDeform([+0.0, +0.0, 0.0])
   //doDeform([+0.0, +0.0, 0.0])
 
   positionBuffer.subdata(bunny.positions)
@@ -703,6 +697,8 @@ loadWASM().then((Module) => {
         if(rayTriIntersect([], o, d, [p0, p1, p2]) != null) {
 //          console.log("INTERSECT")
           selectHandle(c[0])
+          console.log("myand", c[0])
+          // 2234
           dragTarget = c[0]
           break
         }
