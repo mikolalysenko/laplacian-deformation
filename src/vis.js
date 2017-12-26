@@ -2,28 +2,19 @@ const normals = require('angle-normals')
 const mat4 = require('gl-mat4')
 const vec3 = require('gl-vec3')
 var control = require('control-panel')
+var rayTriIntersect = require('ray-triangle-intersection');
+const fit = require('canvas-fit')
+var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
+const canvas = document.body.appendChild(document.createElement('canvas'))
+const regl = require('regl')({canvas: canvas})
+
 //var bunny = require('stanford-dragon/2')
 var bunny = require('../meshes/Armadillo.json')
 //var bunny = require('../meshes/bunny.json')
-
 //var bunny = require('bunny')
 
-//console.log(bunny)
-console.log(bunny)
 
-var rayTriIntersect = require('ray-triangle-intersection');
-
-const fit = require('canvas-fit')
-var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
-//var Module = require('../out2.js')
-
-const canvas = document.body.appendChild(document.createElement('canvas'))
-const regl = require('regl')({canvas: canvas, extensions: ['oes_texture_float']})
-
-var str = `<a href="https://github.com/mikolalysenko/laplacian-deformation"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/82b228a3648bf44fc1163ef44c62fcc60081495e/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_red_aa0000.png"></a>`
-
-
-    Module = {};
+Module = {};
 loadWASM = () => {
   return new Promise((resolve) => {
     fetch('out.wasm')    // load the .wasm file
@@ -35,16 +26,13 @@ loadWASM = () => {
         script.src = 'out.js';   // set script source
 
         script.onload = () => {    // once script has loaded
-          console.log("Loaded Emscripten.");
           resolve(Module);    // return Module
         };
         document.body.appendChild(script); // append script to DOM
       });
   });
 };
-
 loadWASM().then((Module) => {
-
   prepareDeform = Module.cwrap(
     'prepareDeform', null, [
       'number', 'number', // cells, nCells
@@ -58,7 +46,6 @@ loadWASM().then((Module) => {
       'number',  // ROT_INV
     ]
   );
-
   doDeformLib = Module.cwrap(
     'doDeform', null, [
       'number', 'number', // handlePositions, nHandlePositions
@@ -136,8 +123,6 @@ loadWASM().then((Module) => {
     }
   }
 
-
-
   var cellsArr = new Int32Array(bunny.cells.length * 3);
   var ia = 0
   for(var ic = 0; ic < bunny.cells.length; ++ic) {
@@ -162,9 +147,6 @@ loadWASM().then((Module) => {
   var positionsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
   positionsHeap.set(new Uint8Array(positionsArr.buffer));
 
-
-
-  console.log("position buffe len: ", bunny.positions.length * 3 * 4)
   /*
     Create command for drawing bunny.
   */
@@ -193,6 +175,7 @@ loadWASM().then((Module) => {
 
   var prevPos = null
   var prevMousePos = null
+
   function selectHandle(mainHandle) {
     var currentRing = [mainHandle]
 
@@ -278,100 +261,6 @@ loadWASM().then((Module) => {
       visited[e] = true
     }
 
-    /*
-      var cs = []
-      var unconstrained = []
-      var stationary = []
-      var handles = []
-
-      // get the _unique_ vertex indices of the cells.
-      function getPoints(cells) {
-      var set = {}
-      for(var i = 0; i < cells.length; ++i) {
-      var c = cells[i]
-
-      set[c[0]] = true
-      set[c[1]] = true
-      set[c[2]] = true
-      }
-      var ps = []
-      for(var k in set) {
-      ps.push(parseInt(k))
-      }
-      return [ps, set]
-      }
-
-      for(var i = 0; i < bunny.cells.length; ++i) {
-      var c = bunny.cells[i]
-      var outside = false
-
-      for(var j = 0; j < 3; ++j) {
-      var p = bunny.positions[c[j+0]]
-
-      if((p[2]+0.039) < 0.5) {
-      outside = true
-      }
-      }
-
-      if(!outside) {
-      cs.push(c)
-      }
-      }
-
-      var ret = getPoints(cs)
-      stationary = ret[0]
-      var stationarySet = ret[1]
-
-      cs = []
-      for(var i = 0; i < bunny.cells.length; ++i) {
-      var c = bunny.cells[i]
-      var outside = false
-
-      for(var j = 0; j < 3; ++j) {
-      var p = bunny.positions[c[j+0]]
-      if((p[2]+0.039) > -0.42) {
-      outside = true
-      }
-      }
-
-      if(!outside) {
-      cs.push(c)
-      }
-      }
-      var ret = getPoints(cs)
-      handles = ret[0]
-      var handlesSet = ret[1]
-
-      for(var i = 0; i < bunny.positions.length; ++i) {
-      if(!(stationarySet[i] === true || handlesSet[i] === true)) {
-      unconstrained.push(i)
-      }
-      }
-
-
-      // copy of the mesh, that we use when restoring the mesh.
-      var copyBunny = JSON.parse(JSON.stringify(bunny))
-
-
-      var handlesObj = {
-      handles: []
-      }
-
-      for(var i = 0; i < handles.length; ++i) {
-      handlesObj.handles.push(handles[i])
-      }
-      handlesObj.unconstrainedBegin = handlesObj.handles.length
-
-      for(var i = 0; i < unconstrained.length; ++i) {
-      handlesObj.handles.push(unconstrained[i])
-      }
-      handlesObj.stationaryBegin = handlesObj.handles.length
-
-      for(var i = 0; i < stationary.length; ++i) {
-      handlesObj.handles.push(stationary[i])
-      }
-    */
-
     var handlesArr = new Int32Array(handlesObj.handles);
     var nDataBytes = handlesArr.length * handlesArr.BYTES_PER_ELEMENT;
     var handlesHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
@@ -403,26 +292,20 @@ loadWASM().then((Module) => {
       //      true
       true
     )
-
   }
 
   //  var dragTarget = 2234
   var dragTarget = 2096
-
   selectHandle(dragTarget)
-
-  //  selectHandle(200)
-
-  //testfunction(dataHeap.byteOffset, data.length);
-
-  // set current handle that we're manipulating.
 
   /*
     Create GUI
 
   */
   var container = document.createElement('div')
-  container.innerHTML = str
+  var str = `<a href="https://github.com/mikolalysenko/laplacian-deformation"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/82b228a3648bf44fc1163ef44c62fcc60081495e/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_red_aa0000.png"></a>`
+
+      container.innerHTML = str
   document.body.appendChild(container)
 
   var renderHandles = true
@@ -452,9 +335,6 @@ loadWASM().then((Module) => {
   div.style.fontSize = '10px'
   div.appendChild(par)
   document.body.appendChild(div)
-
-
-
 
   var drawBunny = regl({
     vert: `
@@ -768,9 +648,6 @@ loadWASM().then((Module) => {
         var diff = vec3.subtract([],
                                  [mousePos[0], mousePos[1], 0],
                                  [prevMousePos[0], prevMousePos[1], 0])
-
-        console.log("is dragging! ", diff)
-
         if(vec3.length(diff) < 0.001) {
 
         } else {
