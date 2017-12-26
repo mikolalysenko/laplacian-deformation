@@ -3,8 +3,8 @@ const mat4 = require('gl-mat4')
 const vec3 = require('gl-vec3')
 var control = require('control-panel')
 //var bunny = require('stanford-dragon/2')
-//var bunny = require('../meshes/Armadillo.json')
-var bunny = require('../meshes/bunny.json')
+var bunny = require('../meshes/Armadillo.json')
+//var bunny = require('../meshes/bunny.json')
 
 //var bunny = require('bunny')
 
@@ -646,11 +646,11 @@ loadWASM().then((Module) => {
       isPicking = true
     }
 
-    if (key == 81) {
+    if (key == 81) { // q
       movecamera = true
       isDragging = false
     }
-    if (key == 87) {
+    if (key == 87) { // w
       var out = []
       camera.view(out)
       console.log(out)
