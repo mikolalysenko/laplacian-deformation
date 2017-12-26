@@ -368,15 +368,18 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
     if(!roi)
       return
 
-    var handlesPositionsArr = new Float64Array(roi.unconstrainedBegin*3);
+    var handlesPositionsArr = []
     var j = 0
     for(var i = 0; i < (roi.unconstrainedBegin); ++i) {
-      handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][0]  + offset[0]
-      handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][1]  + offset[1]
-      handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][2]  + offset[2]
+      handlesPositionsArr[j++] =
+        [
+          targetMesh.positions[roi.vertices[i]][0]  + offset[0],
+          targetMesh.positions[roi.vertices[i]][1]  + offset[1],
+          targetMesh.positions[roi.vertices[i]][2]  + offset[2]
+        ]
     }
 
-    var result = doDeform()
+    var result = doDeform(handlesPositionsArr)
 
     for(var i = 0 ; i < targetMesh.positions.length; i+=1) {
       targetMesh.positions[i][0] = result[3*i + 0]

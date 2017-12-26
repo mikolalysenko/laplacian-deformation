@@ -36,6 +36,7 @@ function prepareDeform(iRoiVertices, iRoiStationaryBegin, iRoiUnconstrainedBegin
   roiVertices = iRoiVertices
   roiStationaryBegin = iRoiStationaryBegin
   roiUnconstrainedBegin = iRoiUnconstrainedBegin
+
   var roiVerticesArr = new Int32Array(roiVertices);
   var nDataBytes = roiVerticesArr.length * roiVerticesArr.BYTES_PER_ELEMENT;
   var roiVerticesHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
@@ -60,7 +61,9 @@ function doDeform(handlePositions) {
 
   var j = 0
   for(var i = 0; i < handlePositions.length; ++i) {
-    handlesPositionsArr[j++] = handlePositions[i]
+    handlesPositionsArr[j++] = handlePositions[i][0]
+    handlesPositionsArr[j++] = handlePositions[i][1]
+    handlesPositionsArr[j++] = handlePositions[i][2]
   }
 
   for(var i = roiStationaryBegin; i < (roiVertices.length); ++i) {
