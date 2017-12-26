@@ -13,11 +13,28 @@ var targetMesh = require('../meshes/Armadillo.json')
 //var targetMesh = require('../meshes/bunny.json')
 //var targetMesh = require('bunny')
 
+function getAdj(mesh) {
+    var adj = []
+  for(var i = 0; i < mesh.positions.length; ++i) {
+    adj[i] = []
+  }
+
+  for(var i = 0; i < mesh.cells.length; ++i) {
+    var c = mesh.cells[i]
+    for(var j = 0; j < 3; ++j) {
+      var a = c[j+0]
+      var b = c[(j+1) % 3]
+      adj[a].push(b)
+    }
+  }
+
+  return adj
+}
 
 function fitMesh(mesh) {
   var aabb = {
-    min: [+1000, +1000, +1000],
-    max: [-1000, -1000, -1000],
+    min: [+Number.MAX_VALUE, +Number.MAX_VALUE, +Number.MAX_VALUE],
+    max: [-Number.MAX_VALUE, -Number.MAX_VALUE, -Number.MAX_VALUE],
   }
 
   /*
@@ -113,19 +130,7 @@ loadWASM().then((Module) => {
 
   fitMesh(targetMesh)
 
-  var adj = []
-  for(var i = 0; i < targetMesh.positions.length; ++i) {
-    adj[i] = []
-  }
-
-  for(var i = 0; i < targetMesh.cells.length; ++i) {
-    var c = targetMesh.cells[i]
-    for(var j = 0; j < 3; ++j) {
-      var a = c[j+0]
-      var b = c[(j+1) % 3]
-      adj[a].push(b)
-    }
-  }
+  var adj = getAdj(targetMesh)
 
   var cellsArr = new Int32Array(targetMesh.cells.length * 3);
   var ia = 0
