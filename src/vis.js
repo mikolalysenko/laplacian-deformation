@@ -214,7 +214,6 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
   })
 
   var roi = {
-    indices: []
   }
 
   var prevPos = null
@@ -223,6 +222,8 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
   function selectHandle(mainHandle) {
     var currentRing = [mainHandle]
 
+    console.log("select handle")
+
     prevPos = null
     prevMousePos = null
     var visited = []
@@ -230,7 +231,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
       visited[i] = false
     }
 
-    roi.indices = []
+    roi.handles = []
 
     var unconstrainedSet = []
     var handlesSet = []
@@ -240,8 +241,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
       handlesSet[i] = false
     }
 
-    // FIRST HANDLES.
-    while(roi.indices.length < 300) {
+    for(var iter = 0; iter < 10; ++iter) {
 
       var nextRing = []
 
@@ -251,7 +251,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
         if(visited[e])
           continue
 
-        roi.indices.push(e)
+        roi.handles.push(e)
         visited[e] = true
         handlesSet[e] = true
 
@@ -263,11 +263,10 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
       }
       currentRing = nextRing
     }
-    roi.unconstrainedBegin = roi.indices.length
 
+    roi.unconstrained = []
 
-    // 800
-    while(roi.indices.length < 3000) {
+    for(var iter = 0; iter < 20; ++iter) {
 
       var nextRing = []
 
@@ -277,10 +276,9 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
         if(visited[e])
           continue
 
-        roi.indices.push(e)
+        roi.unconstrained.push(e)
         visited[e] = true
         unconstrainedSet[e] = true
-
 
         var adjs = adj[e]
         for(var j = 0; j < adjs.length; ++j) {
@@ -290,7 +288,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
       currentRing = nextRing
     }
 
-    roi.stationaryBegin = roi.indices.length
+    roi.stationary = []
 
     var stationaryIndices = []
     for(var i = 0; i < currentRing.length; ++i) {
@@ -300,12 +298,12 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
         continue
 
       stationaryIndices.push(e)
-      roi.indices.push(e)
+      roi.stationary.push(e)
 
       visited[e] = true
     }
 
-    prepareDeform(roi.indices, roi.stationaryBegin, roi.unconstrainedBegin)
+    prepareDeform(roi.handles, roi.unconstrained, roi.stationary)
 
     var colors = []
     for(var i = 0; i < targetMesh.normals.length; ++i) {
@@ -365,17 +363,18 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
 
   function offsetDeform(offset) {
 
+    console.log("offsetdeform")
     if(!roi)
       return
 
     var handlesPositionsArr = []
     var j = 0
-    for(var i = 0; i < (roi.unconstrainedBegin); ++i) {
+    for(var i = 0; i < (roi.handles.length); ++i) {
       handlesPositionsArr[j++] =
         [
-          targetMesh.positions[roi.indices[i]][0]  + offset[0],
-          targetMesh.positions[roi.indices[i]][1]  + offset[1],
-          targetMesh.positions[roi.indices[i]][2]  + offset[2]
+          targetMesh.positions[roi.handles[i]][0]  + offset[0],
+          targetMesh.positions[roi.handles[i]][1]  + offset[1],
+          targetMesh.positions[roi.handles[i]][2]  + offset[2]
         ]
     }
 

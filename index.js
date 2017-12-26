@@ -32,10 +32,24 @@ function initModule(iMesh) {
   positionsHeap.set(new Uint8Array(positionsArr.buffer));
 }
 
-function prepareDeform(iRoiIndices, iRoiStationaryBegin, iRoiUnconstrainedBegin) {
-  roiIndices = iRoiIndices
-  roiStationaryBegin = iRoiStationaryBegin
-  roiUnconstrainedBegin = iRoiUnconstrainedBegin
+function prepareDeform(
+//  iRoiIndices, iRoiStationaryBegin, iRoiUnconstrainedBegin
+  iRoiHandles, iRoiUnconstrained, iRoiStationary
+) {
+
+  roiIndices = []
+  var j = 0
+  for(const i of iRoiHandles) {
+    roiIndices[j++] = i
+  }
+  roiUnconstrainedBegin = j
+  for(const i of iRoiUnconstrained) {
+    roiIndices[j++] = i
+  }
+  roiStationaryBegin = j
+  for(const i of iRoiStationary) {
+    roiIndices[j++] = i
+  }
 
   var roiIndicesArr = new Int32Array(roiIndices);
   var nDataBytes = roiIndicesArr.length * roiIndicesArr.BYTES_PER_ELEMENT;
@@ -131,7 +145,5 @@ module.exports.load = function(callback) {
     );
 
     callback(initModule, prepareDeform, doDeform)
-
   })
-
 }
