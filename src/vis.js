@@ -204,6 +204,8 @@ loadWASM().then((Module) => {
     type: 'float',
     usage: 'dynamic'
   })
+  positionBuffer.subdata(targetMesh.positions)
+
   const colorBuffer = regl.buffer({
     length: targetMesh.positions.length * 3 * 4,
     type: 'float',
@@ -440,7 +442,6 @@ loadWASM().then((Module) => {
   div.appendChild(par)
   document.body.appendChild(div)
 
-
   function doDeform(offset) {
 
     var numHandles = handlesObj.unconstrainedBegin - 0
@@ -487,16 +488,11 @@ loadWASM().then((Module) => {
 
     positionBuffer.subdata(targetMesh.positions)
   }
-  doDeform([+0.0, +0.0, 0.0])
-
-  positionBuffer.subdata(targetMesh.positions)
 
   var projectionMatrix = mat4.perspective([], Math.PI / 4, canvas.width / canvas.height, 0.01, 1000)
 
-
   var isDragging = false
   var isPicking = false
-
   var movecamera = false
 
   window.onkeydown = function(e) {
@@ -527,7 +523,6 @@ loadWASM().then((Module) => {
       isPicking = false
     }
   }
-
 
   canvas.addEventListener('mousedown', mousedown, false)
 
