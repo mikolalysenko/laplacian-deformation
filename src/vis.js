@@ -273,7 +273,7 @@ new Promise((resolve) => {
   })
 
   var roi = {
-    handles: []
+    vertices: []
   }
 
   var prevPos = null
@@ -289,7 +289,7 @@ new Promise((resolve) => {
       visited[i] = false
     }
 
-    roi.handles = []
+    roi.vertices = []
 
     var unconstrainedSet = []
     var handlesSet = []
@@ -300,7 +300,7 @@ new Promise((resolve) => {
     }
 
     // FIRST HANDLES.
-    while(roi.handles.length < 300) {
+    while(roi.vertices.length < 300) {
 
       var nextRing = []
 
@@ -310,7 +310,7 @@ new Promise((resolve) => {
         if(visited[e])
           continue
 
-        roi.handles.push(e)
+        roi.vertices.push(e)
         visited[e] = true
         handlesSet[e] = true
 
@@ -322,11 +322,11 @@ new Promise((resolve) => {
       }
       currentRing = nextRing
     }
-    roi.unconstrainedBegin = roi.handles.length
+    roi.unconstrainedBegin = roi.vertices.length
 
 
     // 800
-    while(roi.handles.length < 3000) {
+    while(roi.vertices.length < 3000) {
 
       var nextRing = []
 
@@ -336,7 +336,7 @@ new Promise((resolve) => {
         if(visited[e])
           continue
 
-        roi.handles.push(e)
+        roi.vertices.push(e)
         visited[e] = true
         unconstrainedSet[e] = true
 
@@ -349,7 +349,7 @@ new Promise((resolve) => {
       currentRing = nextRing
     }
 
-    roi.stationaryBegin = roi.handles.length
+    roi.stationaryBegin = roi.vertices.length
 
     var staticVertices = []
     for(var i = 0; i < currentRing.length; ++i) {
@@ -359,16 +359,15 @@ new Promise((resolve) => {
         continue
 
       staticVertices.push(e)
-      roi.handles.push(e)
+      roi.vertices.push(e)
 
       visited[e] = true
     }
 
-    var handlesArr = new Int32Array(roi.handles);
-    var nDataBytes = handlesArr.length * handlesArr.BYTES_PER_ELEMENT;
-    var handlesHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
-    handlesHeap.set(new Uint8Array(handlesArr.buffer));
-
+    var roiVertices = new Int32Array(roi.vertices);
+    var nDataBytes = roiVertices.length * roiVertices.BYTES_PER_ELEMENT;
+    var roiVerticesHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+    roiVerticesHeap.set(new Uint8Array(roiVertices.buffer));
 
     var colors = []
     for(var i = 0; i < targetMesh.normals.length; ++i) {
@@ -388,7 +387,7 @@ new Promise((resolve) => {
 
       positionsHeap.byteOffset, targetMesh.positions.length*3,
 
-      handlesHeap.byteOffset, roi.handles.length,
+      roiVerticesHeap.byteOffset, roi.vertices.length,
 
       roi.stationaryBegin, roi.unconstrainedBegin,
       true
@@ -442,21 +441,21 @@ new Promise((resolve) => {
     if(!roi)
       return
 
-    var nHandlesPositionsArr = roi.handles.length - roi.stationaryBegin + roi.unconstrainedBegin
+    var nHandlesPositionsArr = roi.vertices.length - roi.stationaryBegin + roi.unconstrainedBegin
 
     var handlesPositionsArr = new Float64Array(nHandlesPositionsArr*3);
 
     var j = 0
     for(var i = 0; i < (roi.unconstrainedBegin); ++i) {
-      handlesPositionsArr[j++] = targetMesh.positions[roi.handles[i]][0]  + offset[0]
-      handlesPositionsArr[j++] = targetMesh.positions[roi.handles[i]][1]  + offset[1]
-      handlesPositionsArr[j++] = targetMesh.positions[roi.handles[i]][2]  + offset[2]
+      handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][0]  + offset[0]
+      handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][1]  + offset[1]
+      handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][2]  + offset[2]
     }
 
-    for(var i = roi.stationaryBegin; i < (roi.handles.length); ++i) {
-      handlesPositionsArr[j++] = targetMesh.positions[roi.handles[i]][0]
-      handlesPositionsArr[j++] = targetMesh.positions[roi.handles[i]][1]
-      handlesPositionsArr[j++] = targetMesh.positions[roi.handles[i]][2]
+    for(var i = roi.stationaryBegin; i < (roi.vertices.length); ++i) {
+      handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][0]
+      handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][1]
+      handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][2]
     }
     // deform.
     var nDataBytes = handlesPositionsArr.length * handlesPositionsArr.BYTES_PER_ELEMENT;
