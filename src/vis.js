@@ -15,7 +15,6 @@ camera.rotate([0.0, 0.0], [0.0, -0.4])
 camera.rotate([0.0, 0.0], [0.7, 0.0])
 camera.zoom(-29.0)
 
-
 //var targetMesh = require('stanford-dragon/2')
 var targetMesh = require('../meshes/Armadillo.json')
 //var targetMesh = require('../meshes/bunny.json')
@@ -273,7 +272,7 @@ new Promise((resolve) => {
     primitive: 'triangles'
   })
 
-  var handlesObj = {
+  var roi = {
     handles: []
   }
 
@@ -290,7 +289,7 @@ new Promise((resolve) => {
       visited[i] = false
     }
 
-    handlesObj.handles = []
+    roi.handles = []
 
     var unconstrainedSet = []
     var handlesSet = []
@@ -301,7 +300,7 @@ new Promise((resolve) => {
     }
 
     // FIRST HANDLES.
-    while(handlesObj.handles.length < 300) {
+    while(roi.handles.length < 300) {
 
       var nextRing = []
 
@@ -311,7 +310,7 @@ new Promise((resolve) => {
         if(visited[e])
           continue
 
-        handlesObj.handles.push(e)
+        roi.handles.push(e)
         visited[e] = true
         handlesSet[e] = true
 
@@ -323,11 +322,11 @@ new Promise((resolve) => {
       }
       currentRing = nextRing
     }
-    handlesObj.unconstrainedBegin = handlesObj.handles.length
+    roi.unconstrainedBegin = roi.handles.length
 
 
     // 800
-    while(handlesObj.handles.length < 3000) {
+    while(roi.handles.length < 3000) {
 
       var nextRing = []
 
@@ -337,7 +336,7 @@ new Promise((resolve) => {
         if(visited[e])
           continue
 
-        handlesObj.handles.push(e)
+        roi.handles.push(e)
         visited[e] = true
         unconstrainedSet[e] = true
 
@@ -350,7 +349,7 @@ new Promise((resolve) => {
       currentRing = nextRing
     }
 
-    handlesObj.stationaryBegin = handlesObj.handles.length
+    roi.stationaryBegin = roi.handles.length
 
     var staticVertices = []
     for(var i = 0; i < currentRing.length; ++i) {
@@ -360,12 +359,12 @@ new Promise((resolve) => {
         continue
 
       staticVertices.push(e)
-      handlesObj.handles.push(e)
+      roi.handles.push(e)
 
       visited[e] = true
     }
 
-    var handlesArr = new Int32Array(handlesObj.handles);
+    var handlesArr = new Int32Array(roi.handles);
     var nDataBytes = handlesArr.length * handlesArr.BYTES_PER_ELEMENT;
     var handlesHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
     handlesHeap.set(new Uint8Array(handlesArr.buffer));
@@ -389,9 +388,9 @@ new Promise((resolve) => {
 
       positionsHeap.byteOffset, targetMesh.positions.length*3,
 
-      handlesHeap.byteOffset, handlesObj.handles.length,
+      handlesHeap.byteOffset, roi.handles.length,
 
-      handlesObj.stationaryBegin, handlesObj.unconstrainedBegin,
+      roi.stationaryBegin, roi.unconstrainedBegin,
       true
     )
   }
@@ -416,7 +415,7 @@ new Promise((resolve) => {
     {type: 'button', label: 'Reset Mesh', action: function () {
       //      targetMesh = JSON.parse(JSON.stringify(copyBunny))
 
-      //var handlesObj = handlesObj
+      //var roi = roi
       //doDeform([+0.0, 0.2, 0.0])
       //positionBuffer.subdata(targetMesh.positions)
       selectHandle(200)
@@ -440,24 +439,24 @@ new Promise((resolve) => {
 
   function doDeform(offset) {
 
-    if(!handlesObj)
+    if(!roi)
       return
 
-    var nHandlesPositionsArr = handlesObj.handles.length - handlesObj.stationaryBegin + handlesObj.unconstrainedBegin
+    var nHandlesPositionsArr = roi.handles.length - roi.stationaryBegin + roi.unconstrainedBegin
 
     var handlesPositionsArr = new Float64Array(nHandlesPositionsArr*3);
 
     var j = 0
-    for(var i = 0; i < (handlesObj.unconstrainedBegin); ++i) {
-      handlesPositionsArr[j++] = targetMesh.positions[handlesObj.handles[i]][0]  + offset[0]
-      handlesPositionsArr[j++] = targetMesh.positions[handlesObj.handles[i]][1]  + offset[1]
-      handlesPositionsArr[j++] = targetMesh.positions[handlesObj.handles[i]][2]  + offset[2]
+    for(var i = 0; i < (roi.unconstrainedBegin); ++i) {
+      handlesPositionsArr[j++] = targetMesh.positions[roi.handles[i]][0]  + offset[0]
+      handlesPositionsArr[j++] = targetMesh.positions[roi.handles[i]][1]  + offset[1]
+      handlesPositionsArr[j++] = targetMesh.positions[roi.handles[i]][2]  + offset[2]
     }
 
-    for(var i = handlesObj.stationaryBegin; i < (handlesObj.handles.length); ++i) {
-      handlesPositionsArr[j++] = targetMesh.positions[handlesObj.handles[i]][0]
-      handlesPositionsArr[j++] = targetMesh.positions[handlesObj.handles[i]][1]
-      handlesPositionsArr[j++] = targetMesh.positions[handlesObj.handles[i]][2]
+    for(var i = roi.stationaryBegin; i < (roi.handles.length); ++i) {
+      handlesPositionsArr[j++] = targetMesh.positions[roi.handles[i]][0]
+      handlesPositionsArr[j++] = targetMesh.positions[roi.handles[i]][1]
+      handlesPositionsArr[j++] = targetMesh.positions[roi.handles[i]][2]
     }
     // deform.
     var nDataBytes = handlesPositionsArr.length * handlesPositionsArr.BYTES_PER_ELEMENT;
