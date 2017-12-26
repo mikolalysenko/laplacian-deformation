@@ -140,7 +140,7 @@ new Promise((resolve) => {
       document.body.appendChild(script); // append script to DOM
     });
 }).then((Module) => {
-  prepareDeform = Module.cwrap(
+  prepareDeformWrap = Module.cwrap(
     'prepareDeform', null, [
       'number', 'number', // cells, nCells
 
@@ -153,42 +153,66 @@ new Promise((resolve) => {
       'number',  // ROT_INV
     ]
   );
-  doDeformLib = Module.cwrap(
+  doDeformWrap = Module.cwrap(
     'doDeform', null, [
       'number', 'number', // handlePositions, nHandlePositions
       'number', // outPositions
     ]
   );
 
+
+
   fitMesh(targetMesh)
 
   var adj = getAdj(targetMesh)
 
+
+  var cellsHeap
+  var positionsHeap
   // allocate buffers that we can send into webasm
-  {
-    var cellsArr = new Int32Array(targetMesh.cells.length * 3);
+  function initModule(mesh) {
+    var cellsArr = new Int32Array(mesh.cells.length * 3);
     var ia = 0
-    for(var ic = 0; ic < targetMesh.cells.length; ++ic) {
-      var c = targetMesh.cells[ic]
+    for(var ic = 0; ic < mesh.cells.length; ++ic) {
+      var c = mesh.cells[ic]
       cellsArr[ia++] = c[0]
       cellsArr[ia++] = c[1]
       cellsArr[ia++] = c[2]
     }
     var nDataBytes = cellsArr.length * cellsArr.BYTES_PER_ELEMENT;
-    var cellsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+    cellsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
     cellsHeap.set(new Uint8Array(cellsArr.buffer));
 
-    var positionsArr = new Float64Array(targetMesh.positions.length * 3);
+    var positionsArr = new Float64Array(mesh.positions.length * 3);
     var ia = 0
-    for(var ic = 0; ic < targetMesh.positions.length; ++ic) {
-      var c = targetMesh.positions[ic]
+    for(var ic = 0; ic < mesh.positions.length; ++ic) {
+      var c = mesh.positions[ic]
       positionsArr[ia++] = c[0]
       positionsArr[ia++] = c[1]
       positionsArr[ia++] = c[2]
     }
     var nDataBytes = positionsArr.length * positionsArr.BYTES_PER_ELEMENT;
-    var positionsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+    positionsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
     positionsHeap.set(new Uint8Array(positionsArr.buffer));
+  }
+  initModule(targetMesh)
+
+  function prepareDeform(vertices, stationaryBegin, unconstrainedBegin) {
+    var roiVertices = new Int32Array(vertices);
+    var nDataBytes = roiVertices.length * roiVertices.BYTES_PER_ELEMENT;
+    var roiVerticesHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+    roiVerticesHeap.set(new Uint8Array(roiVertices.buffer));
+
+    prepareDeformWrap(
+      cellsHeap.byteOffset, targetMesh.cells.length*3,
+
+      positionsHeap.byteOffset, targetMesh.positions.length*3,
+
+      roiVerticesHeap.byteOffset, vertices.length,
+
+      stationaryBegin, unconstrainedBegin,
+      true
+    )
   }
 
   targetMesh.normals = normals(targetMesh.cells, targetMesh.positions)
@@ -364,10 +388,7 @@ new Promise((resolve) => {
       visited[e] = true
     }
 
-    var roiVertices = new Int32Array(roi.vertices);
-    var nDataBytes = roiVertices.length * roiVertices.BYTES_PER_ELEMENT;
-    var roiVerticesHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
-    roiVerticesHeap.set(new Uint8Array(roiVertices.buffer));
+    prepareDeform(roi.vertices, roi.stationaryBegin, roi.unconstrainedBegin)
 
     var colors = []
     for(var i = 0; i < targetMesh.normals.length; ++i) {
@@ -381,17 +402,6 @@ new Promise((resolve) => {
       }
     }
     colorBuffer.subdata(colors)
-
-    prepareDeform(
-      cellsHeap.byteOffset, targetMesh.cells.length*3,
-
-      positionsHeap.byteOffset, targetMesh.positions.length*3,
-
-      roiVerticesHeap.byteOffset, roi.vertices.length,
-
-      roi.stationaryBegin, roi.unconstrainedBegin,
-      true
-    )
   }
 
   //  var dragTarget = 2234
@@ -462,7 +472,7 @@ new Promise((resolve) => {
     var handlesPositionsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
     handlesPositionsHeap.set(new Uint8Array(handlesPositionsArr.buffer));
 
-    doDeformLib(
+    doDeformWrap(
       handlesPositionsHeap.byteOffset, nHandlesPositionsArr,
 
       positionsHeap.byteOffset
