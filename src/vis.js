@@ -210,6 +210,71 @@ loadWASM().then((Module) => {
     usage: 'dynamic'
   })
 
+  // command for drawing the target mesh.
+  var drawMesh = regl({
+    vert: `
+    precision mediump float;
+    attribute vec3 position;
+    attribute vec3 normal;
+    attribute vec3 color;
+
+    varying vec3 vNormal;
+    varying vec3 vColor;
+    varying vec3 vPosition;
+
+    uniform mat4 view, projection;
+    void main() {
+      vNormal = normal;
+      vPosition = position;
+      vColor = color;
+
+      gl_Position = projection * view * vec4(position, 1);
+    }`,
+
+    frag: `
+    precision mediump float;
+    varying vec3 vNormal;
+    varying vec3 vPosition;
+    varying vec3 vColor;
+
+    uniform vec3 uEyePos;
+
+    void main() {
+
+      vec3 color = vColor + vec3(0.0, 0.0, 0.4);
+
+      vec3 lp = uEyePos;
+
+      vec3 l = normalize(lp - vPosition);
+      vec3 v = normalize(uEyePos - vPosition);
+
+      gl_FragColor = vec4(
+        0.5*color
+          + vec3(0.35)*clamp( dot(vNormal, l), 0.0,1.0 )
+          + vec3(0.15)*pow(clamp(dot(normalize(l+v),vNormal),0.0,1.0)  , 8.0)
+        , 1.0);
+
+    }`,
+
+    attributes: {
+      position: {
+        buffer: positionBuffer,
+        normalized: true
+      },
+
+      normal: targetMesh.normals,
+
+      color: {
+        buffer: colorBuffer,
+        normalized: true
+      },
+
+    },
+
+    elements: targetMesh.cells,
+    primitive: 'triangles'
+  })
+
   var handlesObj = {
     handles: []
   }
@@ -375,73 +440,6 @@ loadWASM().then((Module) => {
   div.appendChild(par)
   document.body.appendChild(div)
 
-  var drawMesh = regl({
-    vert: `
-    precision mediump float;
-    attribute vec3 position;
-    attribute vec3 normal;
-    attribute vec3 color;
-
-    varying vec3 vNormal;
-    varying vec3 vColor;
-    varying vec3 vPosition;
-
-    uniform mat4 view, projection;
-    void main() {
-      vNormal = normal;
-      vPosition = position;
-      vColor = color;
-
-      gl_Position = projection * view * vec4(position, 1);
-    }`,
-
-    frag: `
-    precision mediump float;
-    varying vec3 vNormal;
-    varying vec3 vPosition;
-    varying vec3 vColor;
-
-    uniform vec3 uEyePos;
-
-    void main() {
-
-      vec3 color = vColor + vec3(0.0, 0.0, 0.4);
-
-      vec3 lp = uEyePos;
-
-      vec3 l = normalize(lp - vPosition);
-      vec3 v = normalize(uEyePos - vPosition);
-
-      vec3 lc = vec3(1.0);
-
-      gl_FragColor = vec4(
-
-        0.5*color +
-          0.35*lc*clamp( dot(vNormal, l), 0.0,1.0 )
-          +                          0.15*lc*pow(clamp(dot(normalize(l+v),vNormal),0.0,1.0)  , 8.0)
-
-        , 1.0);
-
-    }`,
-
-    attributes: {
-      position: {
-        buffer: positionBuffer,
-        normalized: true
-      },
-
-      normal: targetMesh.normals,
-
-      color: {
-        buffer: colorBuffer,
-        normalized: true
-      },
-
-    },
-
-    elements: targetMesh.cells,
-    primitive: 'triangles'
-  })
 
   function doDeform(offset) {
 
@@ -494,20 +492,6 @@ loadWASM().then((Module) => {
   positionBuffer.subdata(targetMesh.positions)
 
   var projectionMatrix = mat4.perspective([], Math.PI / 4, canvas.width / canvas.height, 0.01, 1000)
-  const globalScope = regl({
-    uniforms: {
-      view: () => {
-        return camera.view()
-      },
-      projection: () => projectionMatrix,
-
-      uEyePos: () =>{
-        return cameraPosFromViewMatrix([], camera.view())
-      }
-
-    }
-  })
-
 
 
   var isDragging = false
@@ -585,14 +569,23 @@ loadWASM().then((Module) => {
 
   canvas.addEventListener('mouseup', mouseup, false)
   function mouseup() {
-    var mousePos = clipspaceMousePos()
-
     isDragging = false
   }
 
-  camera.tick()
+  const globalScope = regl({
+    uniforms: {
+      view: () => {
+        return camera.view()
+      },
+      projection: () => projectionMatrix,
 
-  regl.frame(({viewportWidth, viewportHeight}) => {
+      uEyePos: () =>{
+        return cameraPosFromViewMatrix([], camera.view())
+      }
+    }
+  })
+
+  regl.frame(({}) => {
     regl.clear({
       depth: 1,
       color: [1, 1, 1, 1]
@@ -600,23 +593,6 @@ loadWASM().then((Module) => {
 
     globalScope( () => {
       drawMesh()
-
-      if(handlesObj != null) {
-        for(var i = 0; i < handlesObj.handles.length; ++i) {
-          //      if(i != 3) continue
-          var handle = targetMesh.positions[handlesObj.handles[i]]
-
-          var c = [0.5, 0.5, 0.5]
-
-          if(i >= handlesObj.stationaryBegin) {
-            c = [1.0, 0.0, 0.0]
-          } else if(i >= handlesObj.unconstrainedBegin){
-            c = [0.0, 1.0, 0.0]
-          } else {
-            c = [0.0, 0.0, 1.0]
-          }
-        }
-      }
     })
 
     // if the mouse is moved while left mouse-button is down,
