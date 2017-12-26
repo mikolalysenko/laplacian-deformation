@@ -132,51 +132,46 @@ loadWASM().then((Module) => {
 
   var adj = getAdj(targetMesh)
 
-  var cellsArr = new Int32Array(targetMesh.cells.length * 3);
-  var ia = 0
-  for(var ic = 0; ic < targetMesh.cells.length; ++ic) {
-    var c = targetMesh.cells[ic]
-    cellsArr[ia++] = c[0]
-    cellsArr[ia++] = c[1]
-    cellsArr[ia++] = c[2]
-  }
-  var nDataBytes = cellsArr.length * cellsArr.BYTES_PER_ELEMENT;
-  var cellsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
-  cellsHeap.set(new Uint8Array(cellsArr.buffer));
+  // allocate buffers that we can send into webasm
+  {
+    var cellsArr = new Int32Array(targetMesh.cells.length * 3);
+    var ia = 0
+    for(var ic = 0; ic < targetMesh.cells.length; ++ic) {
+      var c = targetMesh.cells[ic]
+      cellsArr[ia++] = c[0]
+      cellsArr[ia++] = c[1]
+      cellsArr[ia++] = c[2]
+    }
+    var nDataBytes = cellsArr.length * cellsArr.BYTES_PER_ELEMENT;
+    var cellsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+    cellsHeap.set(new Uint8Array(cellsArr.buffer));
 
-  var positionsArr = new Float64Array(targetMesh.positions.length * 3);
-  var ia = 0
-  for(var ic = 0; ic < targetMesh.positions.length; ++ic) {
-    var c = targetMesh.positions[ic]
-    positionsArr[ia++] = c[0]
-    positionsArr[ia++] = c[1]
-    positionsArr[ia++] = c[2]
+    var positionsArr = new Float64Array(targetMesh.positions.length * 3);
+    var ia = 0
+    for(var ic = 0; ic < targetMesh.positions.length; ++ic) {
+      var c = targetMesh.positions[ic]
+      positionsArr[ia++] = c[0]
+      positionsArr[ia++] = c[1]
+      positionsArr[ia++] = c[2]
+    }
+    var nDataBytes = positionsArr.length * positionsArr.BYTES_PER_ELEMENT;
+    var positionsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+    positionsHeap.set(new Uint8Array(positionsArr.buffer));
   }
-  var nDataBytes = positionsArr.length * positionsArr.BYTES_PER_ELEMENT;
-  var positionsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
-  positionsHeap.set(new Uint8Array(positionsArr.buffer));
 
-  /*
-    Create command for drawing targetMesh.
-  */
+  targetMesh.normals = normals(targetMesh.cells, targetMesh.positions)
+
+  // dynamic buffers that are sent into regl.
   const positionBuffer = regl.buffer({
     length: targetMesh.positions.length * 3 * 4,
     type: 'float',
     usage: 'dynamic'
   })
-
   const colorBuffer = regl.buffer({
     length: targetMesh.positions.length * 3 * 4,
     type: 'float',
     usage: 'dynamic'
   })
-
-  var bunnyNormals = normals(targetMesh.cells, targetMesh.positions)
-
-  var bunnyIds = []
-  for(var i = 0; i < targetMesh.positions.length; ++i) {
-    bunnyIds[i] = i + 0.0
-  }
 
   var handlesObj = {
     handles: []
@@ -277,7 +272,7 @@ loadWASM().then((Module) => {
 
     var bunnyColors = []
 
-    for(var i = 0; i < bunnyNormals.length; ++i) {
+    for(var i = 0; i < targetMesh.normals.length; ++i) {
       bunnyColors[i] = [0.4, 0.4, 0.4];
 
       if(handlesSet[i] === true) {
@@ -345,7 +340,7 @@ loadWASM().then((Module) => {
   div.appendChild(par)
   document.body.appendChild(div)
 
-  var drawBunny = regl({
+  var drawMesh = regl({
     vert: `
     precision mediump float;
     attribute vec3 position;
@@ -400,7 +395,7 @@ loadWASM().then((Module) => {
         normalized: true
       },
 
-      normal: bunnyNormals,
+      normal: targetMesh.normals,
 
       color: {
         buffer: colorBuffer,
@@ -412,8 +407,6 @@ loadWASM().then((Module) => {
     elements: targetMesh.cells,
     primitive: 'triangles'
   })
-
-
 
   function doDeform(offset) {
 
@@ -612,8 +605,7 @@ loadWASM().then((Module) => {
     })
 
     globalScope( () => {
-      drawBunny()
-
+      drawMesh()
 
       if(handlesObj != null) {
         for(var i = 0; i < handlesObj.handles.length; ++i) {
