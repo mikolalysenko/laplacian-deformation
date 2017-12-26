@@ -376,7 +376,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
       handlesPositionsArr[j++] = targetMesh.positions[roi.vertices[i]][2]  + offset[2]
     }
 
-    var result = doDeform(handlesPositionsArr, roi)
+    var result = doDeform()
 
     for(var i = 0 ; i < targetMesh.positions.length; i+=1) {
       targetMesh.positions[i][0] = result[3*i + 0]

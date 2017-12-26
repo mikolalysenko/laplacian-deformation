@@ -1,6 +1,9 @@
 var cellsHeap
 var positionsHeap
 var mesh
+var roiVertices
+var roiStationaryBegin
+var roiUnconstrainedBegin
 // allocate buffers that we can send into webasm
 function initModule(iMesh) {
   mesh = iMesh
@@ -29,27 +32,29 @@ function initModule(iMesh) {
   positionsHeap.set(new Uint8Array(positionsArr.buffer));
 }
 
-function prepareDeform(vertices, stationaryBegin, unconstrainedBegin) {
-  var roiVertices = new Int32Array(vertices);
-  var nDataBytes = roiVertices.length * roiVertices.BYTES_PER_ELEMENT;
+function prepareDeform(iRoiVertices, iRoiStationaryBegin, iRoiUnconstrainedBegin) {
+  roiVertices = iRoiVertices
+  roiStationaryBegin = iRoiStationaryBegin
+  roiUnconstrainedBegin = iRoiUnconstrainedBegin
+  var roiVerticesArr = new Int32Array(roiVertices);
+  var nDataBytes = roiVerticesArr.length * roiVerticesArr.BYTES_PER_ELEMENT;
   var roiVerticesHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
-  roiVerticesHeap.set(new Uint8Array(roiVertices.buffer));
+  roiVerticesHeap.set(new Uint8Array(roiVerticesArr.buffer));
 
   prepareDeformWrap(
     cellsHeap.byteOffset, mesh.cells.length*3,
 
     positionsHeap.byteOffset, mesh.positions.length*3,
 
-    roiVerticesHeap.byteOffset, vertices.length,
+    roiVerticesHeap.byteOffset, roiVertices.length,
 
-    stationaryBegin, unconstrainedBegin,
+    roiStationaryBegin, roiUnconstrainedBegin,
     true
   )
 }
 
-function doDeform(handlePositions, roi) {
-
-  var nHandlesPositionsArr = roi.vertices.length - roi.stationaryBegin + roi.unconstrainedBegin
+function doDeform(handlePositions) {
+  var nHandlesPositionsArr = roiVertices.length - roiStationaryBegin + roiUnconstrainedBegin
 
   var handlesPositionsArr = new Float64Array(nHandlesPositionsArr*3);
 
@@ -58,10 +63,10 @@ function doDeform(handlePositions, roi) {
     handlesPositionsArr[j++] = handlePositions[i]
   }
 
-  for(var i = roi.stationaryBegin; i < (roi.vertices.length); ++i) {
-    handlesPositionsArr[j++] = mesh.positions[roi.vertices[i]][0]
-    handlesPositionsArr[j++] = mesh.positions[roi.vertices[i]][1]
-    handlesPositionsArr[j++] = mesh.positions[roi.vertices[i]][2]
+  for(var i = roiStationaryBegin; i < (roiVertices.length); ++i) {
+    handlesPositionsArr[j++] = mesh.positions[roiVertices[i]][0]
+    handlesPositionsArr[j++] = mesh.positions[roiVertices[i]][1]
+    handlesPositionsArr[j++] = mesh.positions[roiVertices[i]][2]
   }
   // deform.
 
