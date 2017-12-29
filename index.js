@@ -5,6 +5,9 @@ var roiIndices
 var roiStationaryBegin
 var roiUnconstrainedBegin
 
+var roiIndicesHeapPtr = null
+var handlesPositionsHeapPtr = null
+
 // allocate buffers that we can send into webasm
 function initModule(iMesh) {
   mesh = iMesh
@@ -17,7 +20,8 @@ function initModule(iMesh) {
     cellsArr[ia++] = c[2]
   }
   var nDataBytes = cellsArr.length * cellsArr.BYTES_PER_ELEMENT;
-  cellsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+  var cellsHeapPtr = Module._malloc(nDataBytes)
+  cellsHeap = new Uint8Array(Module.HEAPU8.buffer, cellsHeapPtr, nDataBytes);
   cellsHeap.set(new Uint8Array(cellsArr.buffer));
 
   var positionsArr = new Float64Array(mesh.positions.length * 3);
@@ -29,7 +33,8 @@ function initModule(iMesh) {
     positionsArr[ia++] = c[2]
   }
   var nDataBytes = positionsArr.length * positionsArr.BYTES_PER_ELEMENT;
-  positionsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+  var positionsHeapPtr = Module._malloc(nDataBytes)
+  positionsHeap = new Uint8Array(Module.HEAPU8.buffer, positionsHeapPtr, nDataBytes);
   positionsHeap.set(new Uint8Array(positionsArr.buffer));
 }
 
@@ -53,7 +58,14 @@ function prepareDeform(
 
   var roiIndicesArr = new Int32Array(roiIndices);
   var nDataBytes = roiIndicesArr.length * roiIndicesArr.BYTES_PER_ELEMENT;
-  var roiIndicesHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+
+  if(roiIndicesHeapPtr !== null) {
+    Module._free(roiIndicesHeapPtr)
+    roiIndicesHeapPtr = null
+  }
+
+  roiIndicesHeapPtr = Module._malloc(nDataBytes)
+  var roiIndicesHeap = new Uint8Array(Module.HEAPU8.buffer, roiIndicesHeapPtr, nDataBytes);
   roiIndicesHeap.set(new Uint8Array(roiIndicesArr.buffer));
 
   prepareDeformWrap(
@@ -88,7 +100,14 @@ function doDeform(handlePositions) {
   // deform.
 
   var nDataBytes = handlesPositionsArr.length * handlesPositionsArr.BYTES_PER_ELEMENT;
-  var handlesPositionsHeap = new Uint8Array(Module.HEAPU8.buffer, Module._malloc(nDataBytes), nDataBytes);
+
+  if(handlesPositionsHeapPtr !== null) {
+    Module._free(handlesPositionsHeapPtr)
+    handlesPositionsHeapPtr = null
+  }
+
+  handlesPositionsHeapPtr = Module._malloc(nDataBytes)
+  var handlesPositionsHeap = new Uint8Array(Module.HEAPU8.buffer, handlesPositionsHeapPtr, nDataBytes);
   handlesPositionsHeap.set(new Uint8Array(handlesPositionsArr.buffer));
 
   doDeformWrap(
@@ -108,6 +127,19 @@ function doDeform(handlePositions) {
 }
 
 function freeDeform() {
+  Module._free(positionsHeapPtr)
+  Module._free(cellsHeapPtr)
+
+  if(roiIndicesHeapPtr !== null) {
+    Module._free(roiIndicesHeapPtr)
+    roiIndicesHeapPtr = null
+  }
+
+  if(handlesPositionsHeapPtr !== null) {
+    Module._free(handlesPositionsHeapPtr)
+    handlesPositionsHeapPtr = null
+  }
+
   freeDeformWrap()
 
   // TODO: clean up memory allocated by _malloc
@@ -125,34 +157,32 @@ module.exports.load = function(callback) {
         script.src = 'out.js';   // set script source
 
         Module['onRuntimeInitialized'] = function() {
-      prepareDeformWrap = Module.cwrap(
-        'prepareDeform', null, [
-          'number', 'number', // cells, nCells
+          prepareDeformWrap = Module.cwrap(
+            'prepareDeform', null, [
+              'number', 'number', // cells, nCells
 
-          'number', 'number', // positions, nPositions,
+              'number', 'number', // positions, nPositions,
 
-          'number', 'number', // handles, nHandles
+              'number', 'number', // handles, nHandles
 
-          'number', 'number', // stationaryBegin, unconstrainedBegin
+              'number', 'number', // stationaryBegin, unconstrainedBegin
 
-          'number',  // ROT_INV
-        ]
-      );
-      doDeformWrap = Module.cwrap(
-        'doDeform', null, [
-          'number', 'number', // handlePositions, nHandlePositions
-          'number', // outPositions
-        ]
-      );
+              'number',  // ROT_INV
+            ]
+          );
+          doDeformWrap = Module.cwrap(
+            'doDeform', null, [
+              'number', 'number', // handlePositions, nHandlePositions
+              'number', // outPositions
+            ]
+          );
 
-      freeDeformWrap = Module.cwrap(
-        'cleanDeformLol', 'number', [
-          'number',
-        ]
-      );
-      callback(initModule, prepareDeform, doDeform, freeDeform)
+          freeDeformWrap = Module.cwrap(
+            'freeDeform', null, [
 
-//          console.log("init")
+            ]
+          );
+          callback(initModule, prepareDeform, doDeform, freeDeform)
         }
 
         script.onload = () => {    // once script has loaded
