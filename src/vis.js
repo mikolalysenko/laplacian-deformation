@@ -128,7 +128,7 @@ function fitMesh(mesh) {
   }
 }
 
-require("../index.js").load(function(initModule, prepareDeform, doDeform) {
+require("../index.js").load(function(initModule, prepareDeform, doDeform, freeModule) {
   fitMesh(targetMesh)
 
   var adj = getAdj(targetMesh)

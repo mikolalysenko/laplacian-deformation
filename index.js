@@ -128,7 +128,7 @@ function doDeform(handlePositions) {
   return result
 }
 
-function freeDeform() {
+function freeModule() {
   Module._free(positionsHeapPtr)
   Module._free(cellsHeapPtr)
 
@@ -187,7 +187,7 @@ module.exports.load = function(callback) {
 
             ]
           );
-          callback(initModule, prepareDeform, doDeform, freeDeform)
+          callback(initModule, prepareDeform, doDeform, freeModule)
         }
 
         script.onload = () => {    // once script has loaded

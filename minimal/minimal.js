@@ -17,7 +17,7 @@ var handles = [0,2,4,1,3,45,36,16,5,15,8,7,49,12,26,37,47,35]
 var unconstrained = [17,25,11,19,22,9,6,50,10,48,13,27,42,41,46,39,21,29,32,14,18,20,23,64,72,65,71,61,75,62,31,40,43,44,74,38,24,28,30,33,54,55,51,52,66,152,73,68,78,63,76,149,34,81,85,82,155,84]
 var stationary = [94,95,91,92,56,58,53,161,69,151,150,77,67,79,147,154,148,83,88,86,153,158]
 
-require("../index.js").load(function(initModule, prepareDeform, doDeform, freeDeform) {
+require("../index.js").load(function(initModule, prepareDeform, doDeform, freeModule) {
   targetMesh.normals = normals(targetMesh.cells, targetMesh.positions)
 
   targetMesh.colors = []
@@ -51,7 +51,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeDe
     targetMesh.positions[i] = result[i]
   }
 
-  freeDeform()
+  freeModule()
 
   // regl command for drawing the target mesh.
   var drawMesh = regl({
