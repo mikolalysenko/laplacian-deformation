@@ -16,9 +16,12 @@ camera.rotate([0.0, 0.0], [0.7, 0.0])
 camera.zoom(-29.0)
 
 //var targetMesh = require('stanford-dragon/2')
-var targetMesh = require('../meshes/Armadillo.json')
+//var targetMesh = require('../meshes/Armadillo.json')
+var targetMesh = require('../meshes/sphere.json')
 //var targetMesh = require('../meshes/bunny.json')
 //var targetMesh = require('bunny')
+
+//targetMesh = require('icosphere')(2)
 
 // get screen space mouse position, in range [-1,+1] for both x and y coordinates.
 function clipspaceMousePos() {
@@ -239,7 +242,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
       handlesSet[i] = false
     }
 
-    for(var iter = 0; iter < 10; ++iter) {
+    for(var iter = 0; iter < 3; ++iter) {
 
       var nextRing = []
 
@@ -264,7 +267,8 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
 
     roi.unconstrained = []
 
-    for(var iter = 0; iter < 20; ++iter) {
+
+    for(var iter = 0; iter < 3; ++iter) {
 
       var nextRing = []
 
@@ -315,10 +319,16 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
       }
     }
     colorBuffer.subdata(colors)
+
+    console.log("unconstrained:", JSON.stringify(roi.unconstrained))
+    console.log("handles:", JSON.stringify(roi.handles))
+    console.log("stationary:", JSON.stringify(roi.stationary))
+
   }
 
-  //  var dragTarget = 2234
   var dragTarget = 2096
+
+  dragTarget = 0
   selectHandle(dragTarget)
 
   /*

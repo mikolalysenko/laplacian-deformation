@@ -21,6 +21,7 @@
     "icosphere": "^1.0.0",
     "mathjs": "^3.16.3",
     "mouse-position": "^2.0.1",
+    "primitive-icosphere": "^1.0.2",
     "primitive-sphere": "^3.0.0",
     "qr-solve": "^0.1.0",
     "ray-triangle-intersection": "^1.0.3",
@@ -36,6 +37,7 @@
   "scripts": {
     "test": "tape test/*.js",
     "start": "budo --live --open src/vis.js",
+    "minimal": "budo --live --open minimal/minimal.js",
     "test2": "node test/translate.js"
   },
   "repository": {

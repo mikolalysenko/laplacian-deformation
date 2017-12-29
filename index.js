@@ -7,6 +7,8 @@ var roiUnconstrainedBegin
 
 var roiIndicesHeapPtr = null
 var handlesPositionsHeapPtr = null
+var positionsHeapPtr = null
+var cellsHeapPtr =  null
 
 // allocate buffers that we can send into webasm
 function initModule(iMesh) {
@@ -20,7 +22,7 @@ function initModule(iMesh) {
     cellsArr[ia++] = c[2]
   }
   var nDataBytes = cellsArr.length * cellsArr.BYTES_PER_ELEMENT;
-  var cellsHeapPtr = Module._malloc(nDataBytes)
+  cellsHeapPtr = Module._malloc(nDataBytes)
   cellsHeap = new Uint8Array(Module.HEAPU8.buffer, cellsHeapPtr, nDataBytes);
   cellsHeap.set(new Uint8Array(cellsArr.buffer));
 
@@ -33,7 +35,7 @@ function initModule(iMesh) {
     positionsArr[ia++] = c[2]
   }
   var nDataBytes = positionsArr.length * positionsArr.BYTES_PER_ELEMENT;
-  var positionsHeapPtr = Module._malloc(nDataBytes)
+  positionsHeapPtr = Module._malloc(nDataBytes)
   positionsHeap = new Uint8Array(Module.HEAPU8.buffer, positionsHeapPtr, nDataBytes);
   positionsHeap.set(new Uint8Array(positionsArr.buffer));
 }
@@ -146,6 +148,9 @@ function freeDeform() {
 }
 
 module.exports.load = function(callback) {
+
+
+
 
   Module = {};
   new Promise((resolve) => {
