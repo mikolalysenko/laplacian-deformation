@@ -1,13 +1,15 @@
 const normals = require('angle-normals')
-const mat4 = require('gl-mat4')
 const fit = require('canvas-fit')
-var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
 const canvas = document.body.appendChild(document.createElement('canvas'))
 const regl = require('regl')({canvas: canvas})
 
-const camera = require('canvas-orbit-camera')(canvas)
+const camera = require('regl-camera')(regl, {
+  center: [0, 0.0, 0],
+  distance : 2.0,
+  rotationSpeed: 0.5
+})
+
 window.addEventListener('resize', fit(canvas), false)
-camera.zoom(-29.0)
 
 var targetMesh = require('../meshes/sphere.json')
 
@@ -42,7 +44,6 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeDe
 
   freeDeform()
 
-
   // regl command for drawing the target mesh.
   var drawMesh = regl({
     vert: `
@@ -66,11 +67,12 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeDe
     varying vec3 vNormal;
     varying vec3 vPosition;
 
-    uniform vec3 uEyePos;
+    uniform vec3 eye;
 
     void main() {
       vec3 color = vec3(0.0, 0.0, 0.4);
-      vec3 l = normalize(uEyePos - vPosition);
+      vec3 l = normalize(
+        eye - vPosition);
       gl_FragColor = vec4(
         0.5*color
           + vec3(0.35)*clamp( dot(vNormal, l), 0.0,1.0 )
@@ -82,11 +84,6 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeDe
       normal: targetMesh.normals,
     },
 
-    uniforms: {
-      view: () => camera.view(),
-      projection: () => mat4.perspective([], Math.PI / 4, canvas.width / canvas.height, 0.01, 1000),
-      uEyePos: () => cameraPosFromViewMatrix([], camera.view())
-    },
     elements: targetMesh.cells,
     primitive: 'triangles'
   })
@@ -96,7 +93,11 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeDe
       depth: 1,
       color: [1, 1, 1, 1]
     })
-    drawMesh()
+
+    camera(() => {
+      drawMesh()
+    })
+
     camera.tick()
   })
 })
