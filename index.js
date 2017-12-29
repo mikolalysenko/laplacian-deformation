@@ -4,6 +4,7 @@ var mesh
 var roiIndices
 var roiStationaryBegin
 var roiUnconstrainedBegin
+
 // allocate buffers that we can send into webasm
 function initModule(iMesh) {
   mesh = iMesh
@@ -33,7 +34,6 @@ function initModule(iMesh) {
 }
 
 function prepareDeform(
-//  iRoiIndices, iRoiStationaryBegin, iRoiUnconstrainedBegin
   iRoiHandles, iRoiUnconstrained, iRoiStationary
 ) {
 
@@ -107,6 +107,12 @@ function doDeform(handlePositions) {
   return result
 }
 
+function freeDeform() {
+  freeDeformWrap()
+
+  // TODO: clean up memory allocated by _malloc
+}
+
 module.exports.load = function(callback) {
 
   Module = {};
@@ -118,32 +124,44 @@ module.exports.load = function(callback) {
         const script = document.createElement('script');
         script.src = 'out.js';   // set script source
 
+        Module['onRuntimeInitialized'] = function() {
+      prepareDeformWrap = Module.cwrap(
+        'prepareDeform', null, [
+          'number', 'number', // cells, nCells
+
+          'number', 'number', // positions, nPositions,
+
+          'number', 'number', // handles, nHandles
+
+          'number', 'number', // stationaryBegin, unconstrainedBegin
+
+          'number',  // ROT_INV
+        ]
+      );
+      doDeformWrap = Module.cwrap(
+        'doDeform', null, [
+          'number', 'number', // handlePositions, nHandlePositions
+          'number', // outPositions
+        ]
+      );
+
+      freeDeformWrap = Module.cwrap(
+        'cleanDeformLol', 'number', [
+          'number',
+        ]
+      );
+      callback(initModule, prepareDeform, doDeform, freeDeform)
+
+//          console.log("init")
+        }
+
         script.onload = () => {    // once script has loaded
           resolve(Module);    // return Module
         };
         document.body.appendChild(script); // append script to DOM
       });
   }).then((Module) => {
-    prepareDeformWrap = Module.cwrap(
-      'prepareDeform', null, [
-        'number', 'number', // cells, nCells
 
-        'number', 'number', // positions, nPositions,
 
-        'number', 'number', // handles, nHandles
-
-        'number', 'number', // stationaryBegin, unconstrainedBegin
-
-        'number',  // ROT_INV
-      ]
-    );
-    doDeformWrap = Module.cwrap(
-      'doDeform', null, [
-        'number', 'number', // handlePositions, nHandlePositions
-        'number', // outPositions
-      ]
-    );
-
-    callback(initModule, prepareDeform, doDeform)
   })
 }

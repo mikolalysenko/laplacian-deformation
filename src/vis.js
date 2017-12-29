@@ -222,8 +222,6 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
   function selectHandle(mainHandle) {
     var currentRing = [mainHandle]
 
-    console.log("select handle")
-
     prevPos = null
     prevMousePos = null
     var visited = []
@@ -362,8 +360,6 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
   document.body.appendChild(div)
 
   function offsetDeform(offset) {
-
-    console.log("offsetdeform")
     if(!roi)
       return
 
@@ -407,7 +403,6 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
     if (key == 87) { // w
       var out = []
       camera.view(out)
-      console.log(out)
     }
   }
 
@@ -429,8 +424,6 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
   */
   function mousedown() {
     if(isPicking) {
-      console.log("CLICK")
-
       var ret = getCameraRay(camera.view(), projectionMatrix)
       var d = ret[0]
       var o = ret[1]
@@ -443,10 +436,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform) {
         var p2 = targetMesh.positions[c[2]]
 
         if(rayTriIntersect([], o, d, [p0, p1, p2]) != null) {
-          //          console.log("INTERSECT")
           selectHandle(c[0])
-          console.log("myand", c[0])
-          // 2234
           dragTarget = c[0]
           break
         }
