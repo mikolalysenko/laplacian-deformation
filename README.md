@@ -55,7 +55,7 @@ It is shown in `minimal/minimal.js` how this deformation was done.
 
 After calling `prepareDeform()`, we can use `doDeform()` to specify
 the positions of the `handles` vertices, and thus deform the
-mesh.
+mesh. Returns the vertex coordinates of the deformed mesh.
 
 * `handlesPositions` is simply an array of coordinates of the
 format `[[x,y,z], [x,y,z], ...]`. The first coordinate sets the
