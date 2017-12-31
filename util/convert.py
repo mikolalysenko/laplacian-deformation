@@ -1,7 +1,7 @@
 s0 = '"positions":['
 s1 = '"cells":['
 
-model = "bunny"
+model = "../meshes/armadillo_low_res"
 
 with open(model+'.ply') as f:
     c = 0
