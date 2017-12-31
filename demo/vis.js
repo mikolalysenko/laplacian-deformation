@@ -21,8 +21,6 @@ var targetMesh = require('../meshes/Armadillo.json')
 //var targetMesh = require('../meshes/bunny.json')
 //var targetMesh = require('bunny')
 
-//targetMesh = require('icosphere')(2)
-
 // get screen space mouse position, in range [-1,+1] for both x and y coordinates.
 function clipspaceMousePos() {
   return [2.0 * mousePosition[0] / canvas.width - 1.0, -2.0 * mousePosition[1] / canvas.height + 1.0]
