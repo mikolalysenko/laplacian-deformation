@@ -436,6 +436,9 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
       var d = ret[0]
       var o = ret[1]
 
+      var minDist = Number.MAX_VALUE
+      var minHandle = -1
+
       for(var i = 0; i < targetMesh.cells.length; ++i) {
         var c = targetMesh.cells[i]
 
@@ -443,12 +446,21 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
         var p1 = targetMesh.positions[c[1]]
         var p2 = targetMesh.positions[c[2]]
 
-        if(rayTriIntersect([], o, d, [p0, p1, p2]) != null) {
-          selectHandle(c[0])
-          dragTarget = c[0]
-          break
-        }
+        var intersectPoint = rayTriIntersect([], o, d, [p0, p1, p2])
 
+        if(intersectPoint != null) {
+          var dist = vec3.distance(intersectPoint, o)
+
+          if(dist < minDist) {
+            minDist = dist
+            minHandle = c[0]
+            break
+          }
+        }
+      }
+
+      if(minHandle != -1) {
+        selectHandle(minHandle)
       }
 
     } else {
