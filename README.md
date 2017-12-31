@@ -9,11 +9,11 @@ In our current API, we load the module as
 
 ```javascript
 require("laplacian-deformation").load(function(initModule,prepareDeform, doDeform, freeModule) {
-...
+// code that uses the API here.
 }
 ```
 
-The API consits of four methods. We describe them below.
+The API consists of four methods. We describe them below.
 
 ### `initModule(mesh)`
 
@@ -26,12 +26,12 @@ Does precalculations necessary for performing deformation on a region
 of vertices of the mesh. Note that this is a slow operation that
 performs performs cholesky decomposition!
 
-* `handles`. Vertices can be freely manipulated.
+* `handles`. vertices that can be freely manipulated.
 
 * `unconstrained` these are vertices that are free, and are solved for
   in the laplacian deformation calculations.
 
-* `boundary` These are vertices specifies the boundary of the region
+* `boundary` These vertices specifies the boundary of the region
   we are performing deformation on.
 
 Some images will serve to clarify the meaning of the above
@@ -41,8 +41,7 @@ parameters.
 
 In the image, `handles` is yellow, `unconstrained` is blue, `boundary`
 is red, and the gray region are vertices not affected by the
-deformation. Only yellow, blue and red vertices are the region
-affected by the deformation,
+deformation. Only yellow, blue and red vertices are affected by the deformation.
 
 The user of the library deforms the mesh by setting the positions of
 the `handles` vertices by calling `doDeform`. One possible
@@ -61,4 +60,4 @@ mesh.
 
 * `handlesPositions` is simply an array of coordinates of the
 format `[[x,y,z], [x,y,z], ...]`. The first coordinate sets the
-positions of the handle `handles[0]$.
+positions of the handle `handles[0]`, and so on.
