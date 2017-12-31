@@ -4,19 +4,26 @@ const vec3 = require('gl-vec3')
 var control = require('control-panel')
 var rayTriIntersect = require('ray-triangle-intersection');
 const fit = require('canvas-fit')
-var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix');
 const canvas = document.body.appendChild(document.createElement('canvas'))
 var mousePosition = require('mouse-position')(canvas)
-const regl = require('regl')({canvas: canvas})
 
-const camera = require('canvas-orbit-camera')(canvas)
+const regl = require('regl')({canvas: canvas})
+const camera = require('./modified-regl-camera.js')(regl, {
+  center: [0, 0.0, 0],
+  distance : 2.0,
+  rotationSpeed: 0.5,
+  phi: 1.1,
+  renderOnDirty : false
+})
+
 window.addEventListener('resize', fit(canvas), false)
-camera.rotate([0.0, 0.0], [0.0, -0.4])
-camera.rotate([0.0, 0.0], [0.7, 0.0])
-camera.zoom(-29.0)
+
+var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix')
 
 //var targetMesh = require('stanford-dragon/2')
-var targetMesh = require('../meshes/Armadillo.json')
+//var targetMesh = require('../meshes/Armadillo.json')
+var targetMesh = require('../meshes/armadillo_low_res.json')
+
 //var targetMesh = require('../meshes/sphere.json')
 //var targetMesh = require('../meshes/bunny.json')
 //var targetMesh = require('bunny')
@@ -176,16 +183,16 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
     varying vec3 vPosition;
     varying vec3 vColor;
 
-    uniform vec3 uEyePos;
+    uniform vec3 eye;
 
     void main() {
 
       vec3 color = vColor + vec3(0.0, 0.0, 0.4);
 
-      vec3 lp = uEyePos;
+      vec3 lp = eye;
 
       vec3 l = normalize(lp - vPosition);
-      vec3 v = normalize(uEyePos - vPosition);
+      vec3 v = normalize(eye - vPosition);
 
       gl_FragColor = vec4(
         0.5*color
@@ -216,6 +223,72 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
 
   var roi = {
   }
+
+
+  /*
+    Create GUI
+
+  */
+  var container = document.createElement('div')
+  var str = `<a href="https://github.com/mikolalysenko/laplacian-deformation"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/82b228a3648bf44fc1163ef44c62fcc60081495e/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_red_aa0000.png"></a>`
+
+      container.innerHTML = str
+  document.body.appendChild(container)
+
+  var renderHandles = true
+  /*
+    var panel = control([
+    {type: 'checkbox', label: 'render_handles', initial: renderHandles},
+    {type: 'button', label: 'Reset Mesh', action: function () {
+    //      targetMesh = JSON.parse(JSON.stringify(copyBunny))
+
+    //var roi = roi
+    //doDeform([+0.0, 0.2, 0.0])
+    //positionBuffer.subdata(targetMesh.positions)
+    selectHandle(200)
+
+    }},
+    ],
+    {theme: 'light', position: 'top-right'}
+    ).on('input', data => {
+    renderHandles = data.render_handles
+    params = data
+    })
+  */
+
+  var par = document.createElement("h3")
+  par.innerHTML = "Click near the white handles and drag to deform the mesh. <br>Hold \"Q\"-key, and drag the mouse, and/or scroll to change the view.<br> Hold \"T\"-key and press the mesh, to select a new region of interest. This takes a while though."
+
+  var div = document.createElement('div')
+  div.style.cssText = 'color: #000; position: absolute; bottom: 0px; width: 100%; padding: 5px; z-index:100;'
+  div.style.fontSize = '10px'
+  div.appendChild(par)
+  document.body.appendChild(div)
+
+  function offsetDeform(offset) {
+    if(!roi)
+      return
+
+    var handlesPositionsArr = []
+    var j = 0
+    for(var i = 0; i < (roi.handles.length); ++i) {
+      handlesPositionsArr[j++] =
+        [
+          targetMesh.positions[roi.handles[i]][0]  + offset[0],
+          targetMesh.positions[roi.handles[i]][1]  + offset[1],
+          targetMesh.positions[roi.handles[i]][2]  + offset[2]
+        ]
+    }
+
+    var result = doDeform(handlesPositionsArr)
+
+    for(var i = 0 ; i < targetMesh.positions.length; i+=1) {
+      targetMesh.positions[i] = result[i]
+    }
+
+    positionBuffer.subdata(targetMesh.positions)
+  }
+
 
   var prevPos = null
   var prevMousePos = null
@@ -322,78 +395,13 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
 
   var dragTarget = 2096
 
-//  dragTarget = 0
+  //  dragTarget = 0
   selectHandle(dragTarget)
-
-  /*
-    Create GUI
-
-  */
-  var container = document.createElement('div')
-  var str = `<a href="https://github.com/mikolalysenko/laplacian-deformation"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/82b228a3648bf44fc1163ef44c62fcc60081495e/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_red_aa0000.png"></a>`
-
-      container.innerHTML = str
-  document.body.appendChild(container)
-
-  var renderHandles = true
-  /*
-  var panel = control([
-    {type: 'checkbox', label: 'render_handles', initial: renderHandles},
-    {type: 'button', label: 'Reset Mesh', action: function () {
-      //      targetMesh = JSON.parse(JSON.stringify(copyBunny))
-
-      //var roi = roi
-      //doDeform([+0.0, 0.2, 0.0])
-      //positionBuffer.subdata(targetMesh.positions)
-      selectHandle(200)
-
-    }},
-  ],
-                      {theme: 'light', position: 'top-right'}
-                     ).on('input', data => {
-                       renderHandles = data.render_handles
-                       params = data
-                     })
-                     */
-
-  var par = document.createElement("h3")
-  par.innerHTML = "Click near the white handles and drag to deform the mesh. <br>Hold \"Q\"-key, and drag the mouse, and/or scroll to change the view.<br> Hold \"T\"-key and press the mesh, to select a new region of interest. This takes a while though."
-
-  var div = document.createElement('div')
-  div.style.cssText = 'color: #000; position: absolute; bottom: 0px; width: 100%; padding: 5px; z-index:100;'
-  div.style.fontSize = '10px'
-  div.appendChild(par)
-  document.body.appendChild(div)
-
-  function offsetDeform(offset) {
-    if(!roi)
-      return
-
-    var handlesPositionsArr = []
-    var j = 0
-    for(var i = 0; i < (roi.handles.length); ++i) {
-      handlesPositionsArr[j++] =
-        [
-          targetMesh.positions[roi.handles[i]][0]  + offset[0],
-          targetMesh.positions[roi.handles[i]][1]  + offset[1],
-          targetMesh.positions[roi.handles[i]][2]  + offset[2]
-        ]
-    }
-
-    var result = doDeform(handlesPositionsArr)
-
-    for(var i = 0 ; i < targetMesh.positions.length; i+=1) {
-      targetMesh.positions[i] = result[i]
-    }
-
-    positionBuffer.subdata(targetMesh.positions)
-  }
 
   var projectionMatrix = mat4.perspective([], Math.PI / 4, canvas.width / canvas.height, 0.01, 1000)
 
   var isDragging = false
   var isPicking = false
-  var movecamera = false
 
   window.onkeydown = function(e) {
     var key = e.keyCode ? e.keyCode : e.which;
@@ -401,36 +409,27 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
     if (key == 84) { // t
       isPicking = true
     }
-
-    if (key == 81) { // q
-      movecamera = true
-      isDragging = false
-    }
-    if (key == 87) { // w
-      var out = []
-      camera.view(out)
-    }
   }
 
   window.onkeyup = function(e) {
     var key = e.keyCode ? e.keyCode : e.which;
 
-    if (key == 81) {
-      movecamera = false
-    }
     if (key == 84) {
       isPicking = false
     }
   }
 
-  canvas.addEventListener('mousedown', mousedown, false)
+  canvas.addEventListener('mouseup', mouseup, false)
+  function mouseup() {
+    isDragging = false
+  }
 
-  /*
-    When clicking mouse, pick handle that is near enough to mouse, and closest to the camera.
-  */
-  function mousedown() {
+  var curView = null
+  var curProjection = null
+
+  function mousedown(ev) {
     if(isPicking) {
-      var ret = getCameraRay(camera.view(), projectionMatrix)
+      var ret = getCameraRay(camera.view, camera.projection)
       var d = ret[0]
       var o = ret[1]
 
@@ -449,81 +448,71 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
 
       }
 
-    }
-
-    if(!isPicking && !movecamera) {
-      isDragging = true
-    }
-  }
-
-  canvas.addEventListener('mouseup', mouseup, false)
-  function mouseup() {
-    isDragging = false
-  }
-
-  const globalScope = regl({
-    uniforms: {
-      view: () => {
-        return camera.view()
-      },
-      projection: () => projectionMatrix,
-
-      uEyePos: () =>{
-        return cameraPosFromViewMatrix([], camera.view())
+    } else {
+      if (ev.button === 0) {
+        isDragging = true
       }
     }
-  })
+  }
 
+  canvas.addEventListener('mousedown', mousedown, false)
   regl.frame(({}) => {
+
+
     regl.clear({
       depth: 1,
       color: [1, 1, 1, 1]
     })
 
-    globalScope( () => {
+    camera(() => {
+      /*
+        When clicking mouse, pick handle that is near enough to mouse, and closest to the camera.
+      */
+
+      curView = camera.view
+      curProjection = camera.projection
+
       drawMesh()
+
+      // if the mouse is moved while left mouse-button is down,
+      // the main handle should follow the mouse.
+      // the below calculations ensure this.
+      if(isDragging) {
+        var ret = getCameraRay(camera.view, camera.projection)
+        var d = ret[0]
+        var o = ret[1]
+
+        var mousePos = clipspaceMousePos()
+
+        var pr0 = targetMesh.positions[dragTarget]
+        var pn = [o[0] - pr0[0], o[1] - pr0[1], o[2] - pr0[2]]
+
+        vec3.normalize(pn, pn)
+
+        var t = (vec3.dot(pn, pr0) - vec3.dot(pn, o)) / vec3.dot(d, pn)
+
+        var p = vec3.add([], o, vec3.scale([], d, t))
+
+        if(prevPos != null && prevMousePos != null) {
+
+          var diff = vec3.subtract([],
+                                   [mousePos[0], mousePos[1], 0],
+                                   [prevMousePos[0], prevMousePos[1], 0])
+          if(vec3.length(diff) < 0.001) {
+
+          } else {
+
+            var def = vec3.subtract([], p, prevPos)
+
+            offsetDeform(def)
+          }
+
+        }
+        prevPos = p
+        prevMousePos = mousePos
+      }
+
     })
 
-    // if the mouse is moved while left mouse-button is down,
-    // the main handle should follow the mouse.
-    // the below calculations ensure this.
-    if(isDragging) {
-      var ret = getCameraRay(camera.view(), projectionMatrix)
-      var d = ret[0]
-      var o = ret[1]
-
-      var mousePos = clipspaceMousePos()
-
-      var pr0 = targetMesh.positions[dragTarget]
-      var pn = [o[0] - pr0[0], o[1] - pr0[1], o[2] - pr0[2]]
-
-      vec3.normalize(pn, pn)
-
-      var t = (vec3.dot(pn, pr0) - vec3.dot(pn, o)) / vec3.dot(d, pn)
-
-      var p = vec3.add([], o, vec3.scale([], d, t))
-
-      if(prevPos != null && prevMousePos != null) {
-
-        var diff = vec3.subtract([],
-                                 [mousePos[0], mousePos[1], 0],
-                                 [prevMousePos[0], prevMousePos[1], 0])
-        if(vec3.length(diff) < 0.001) {
-
-        } else {
-
-          var def = vec3.subtract([], p, prevPos)
-
-          offsetDeform(def)
-        }
-
-      }
-      prevPos = p
-      prevMousePos = mousePos
-    }
-
-    if(movecamera) {
-      camera.tick()
-    }
   })
 })
