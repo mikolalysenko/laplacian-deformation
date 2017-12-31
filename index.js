@@ -2,7 +2,7 @@ var cellsHeap
 var positionsHeap
 var mesh
 var roiIndices
-var roiStationaryBegin
+var roiBoundaryBegin
 var roiUnconstrainedBegin
 
 var roiIndicesHeapPtr = null
@@ -41,7 +41,7 @@ function initModule(iMesh) {
 }
 
 function prepareDeform(
-  iRoiHandles, iRoiUnconstrained, iRoiStationary
+  iRoiHandles, iRoiUnconstrained, iRoiBoundary
 ) {
 
   roiIndices = []
@@ -53,8 +53,8 @@ function prepareDeform(
   for(const i of iRoiUnconstrained) {
     roiIndices[j++] = i
   }
-  roiStationaryBegin = j
-  for(const i of iRoiStationary) {
+  roiBoundaryBegin = j
+  for(const i of iRoiBoundary) {
     roiIndices[j++] = i
   }
 
@@ -77,13 +77,13 @@ function prepareDeform(
 
     roiIndicesHeap.byteOffset, roiIndices.length,
 
-    roiStationaryBegin, roiUnconstrainedBegin,
+    roiBoundaryBegin, roiUnconstrainedBegin,
     true
   )
 }
 
 function doDeform(handlePositions) {
-  var nHandlesPositionsArr = roiIndices.length - roiStationaryBegin + roiUnconstrainedBegin
+  var nHandlesPositionsArr = roiIndices.length - roiBoundaryBegin + roiUnconstrainedBegin
 
   var handlesPositionsArr = new Float64Array(nHandlesPositionsArr*3);
 
@@ -94,7 +94,7 @@ function doDeform(handlePositions) {
     handlesPositionsArr[j++] = handlePositions[i][2]
   }
 
-  for(var i = roiStationaryBegin; i < (roiIndices.length); ++i) {
+  for(var i = roiBoundaryBegin; i < (roiIndices.length); ++i) {
     handlesPositionsArr[j++] = mesh.positions[roiIndices[i]][0]
     handlesPositionsArr[j++] = mesh.positions[roiIndices[i]][1]
     handlesPositionsArr[j++] = mesh.positions[roiIndices[i]][2]
@@ -149,17 +149,14 @@ function freeModule() {
 
 module.exports.load = function(callback) {
 
-
-
-
   Module = {};
   new Promise((resolve) => {
-    fetch('out.wasm')    // load the .wasm file
+    fetch('laplacian_deformation.wasm')    // load the .wasm file
       .then(response => response.arrayBuffer())
       .then((buffer) => {    //return ArrayBuffer
         Module.wasmBinary = buffer;   // assign buffer to Module
         const script = document.createElement('script');
-        script.src = 'out.js';   // set script source
+        script.src = 'laplacian_deformation.js';   // set script source
 
         Module['onRuntimeInitialized'] = function() {
           prepareDeformWrap = Module.cwrap(
@@ -170,7 +167,7 @@ module.exports.load = function(callback) {
 
               'number', 'number', // handles, nHandles
 
-              'number', 'number', // stationaryBegin, unconstrainedBegin
+              'number', 'number', // boundaryBegin, unconstrainedBegin
 
               'number',  // ROT_INV
             ]
@@ -196,7 +193,6 @@ module.exports.load = function(callback) {
         document.body.appendChild(script); // append script to DOM
       });
   }).then((Module) => {
-
 
   })
 }

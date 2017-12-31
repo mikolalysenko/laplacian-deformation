@@ -16,8 +16,8 @@ camera.rotate([0.0, 0.0], [0.7, 0.0])
 camera.zoom(-29.0)
 
 //var targetMesh = require('stanford-dragon/2')
-//var targetMesh = require('../meshes/Armadillo.json')
-var targetMesh = require('../meshes/sphere.json')
+var targetMesh = require('../meshes/Armadillo.json')
+//var targetMesh = require('../meshes/sphere.json')
 //var targetMesh = require('../meshes/bunny.json')
 //var targetMesh = require('bunny')
 
@@ -242,7 +242,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
       handlesSet[i] = false
     }
 
-    for(var iter = 0; iter < 3; ++iter) {
+    for(var iter = 0; iter < 13; ++iter) {
 
       var nextRing = []
 
@@ -268,7 +268,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
     roi.unconstrained = []
 
 
-    for(var iter = 0; iter < 3; ++iter) {
+    for(var iter = 0; iter < 27; ++iter) {
 
       var nextRing = []
 
@@ -290,22 +290,22 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
       currentRing = nextRing
     }
 
-    roi.stationary = []
+    roi.boundary = []
 
-    var stationaryIndices = []
+    var boundaryIndices = []
     for(var i = 0; i < currentRing.length; ++i) {
       var e = currentRing[i]
 
       if(visited[e])
         continue
 
-      stationaryIndices.push(e)
-      roi.stationary.push(e)
+      boundaryIndices.push(e)
+      roi.boundary.push(e)
 
       visited[e] = true
     }
 
-    prepareDeform(roi.handles, roi.unconstrained, roi.stationary)
+    prepareDeform(roi.handles, roi.unconstrained, roi.boundary)
 
     var colors = []
     for(var i = 0; i < targetMesh.normals.length; ++i) {
@@ -322,13 +322,13 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
 
     console.log("unconstrained:", JSON.stringify(roi.unconstrained))
     console.log("handles:", JSON.stringify(roi.handles))
-    console.log("stationary:", JSON.stringify(roi.stationary))
+    console.log("boundary:", JSON.stringify(roi.boundary))
 
   }
 
   var dragTarget = 2096
 
-  dragTarget = 0
+//  dragTarget = 0
   selectHandle(dragTarget)
 
   /*

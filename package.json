@@ -37,7 +37,7 @@
   },
   "scripts": {
     "test": "tape test/*.js",
-    "start": "budo --live --open src/vis.js",
+    "start": "budo --live --open demo/vis.js",
     "minimal": "budo --live --open minimal/minimal.js",
     "test2": "node test/translate.js"
   },
