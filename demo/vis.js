@@ -265,7 +265,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
   par.innerHTML = "Click near the white handles and drag to deform the mesh. Hold \"T\"-key and press the mesh, to select a new region of deformation. This takes a while though."
 
   var div = document.createElement('div')
-  div.style.cssText = 'color: #000; position: absolute; bottom: 0px; width: 100%; padding: 5px; z-index:100;'
+  div.style.cssText = 'color: #000; position: absolute; bottom: 0px; width: 300; padding: 5px; z-index:100;'
   div.style.fontSize = '10px'
   div.appendChild(par)
   document.body.appendChild(div)
