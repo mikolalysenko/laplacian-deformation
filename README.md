@@ -1,4 +1,4 @@
-Laplacian Deformation Module
+laplacian deformation module
 =====================
 
 To run a minimal example do:
@@ -37,6 +37,22 @@ performs performs cholesky decomposition!
 Some images will serve to clarify the meaning of the above
 parameters.
 
+![](img/minimal1.png)
+
+In the image, `handles` is yellow, `unconstrained` is blue, `boundary`
+is red, and the gray region are vertices not affected by the
+deformation. Only yellow, blue and red vertices are the region
+affected by the deformation,
+
+The user of the library deforms the mesh by setting the positions of
+the `handles` vertices by calling `doDeform`. One possible
+deformation can look like the below:
+
+![](img/minimal2.png)
+
+It is shown in `minimal/minimal.js` how this deformation was done.
+
+
 ### `deDeform(handlesPositions)`
 
 After calling `prepareDeform()`, we can use `doDeform()` to specify
@@ -45,4 +61,4 @@ mesh.
 
 * `handlesPositions` is simply an array of coordinates of the
 format `[[x,y,z], [x,y,z], ...]`. The first coordinate sets the
-position of the handle `handles[0]`, and so on.
+positions of the handle `handles[0]$.
