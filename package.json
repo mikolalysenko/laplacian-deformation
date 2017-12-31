@@ -3,34 +3,27 @@
   "version": "1.0.0",
   "description": "Laplacian mesh deformation",
   "main": "index.js",
-  "dependencies": {
+  "dependencies": {},
+  "devDependencies": {
+    "budo": "^10.0.4",
+    "tape": "^4.7.0",
     "angle-normals": "^1.0.0",
-    "bunny": "^1.0.1",
     "canvas-fit": "^1.5.0",
     "canvas-orbit-camera": "^1.0.2",
-    "cholesky-solve": "^0.2.0",
-    "conjugate-gradient": "0.0.2",
     "control-panel": "^1.2.0",
-    "csr-matrix": "~0.1.4",
-    "cuthill-mckee": "^1.0.0",
     "gl-camera-pos-from-view-matrix": "^1.0.1",
     "gl-mat4": "^1.1.4",
     "gl-vec3": "^1.0.3",
-    "gl-wireframe": "^1.0.1",
-    "icosphere": "^1.0.0",
     "mouse-position": "^2.0.1",
-    "primitive-sphere": "^3.0.0",
-    "qr-solve": "^0.1.0",
-    "regl": "^1.3.0"
-  },
-  "devDependencies": {
-    "budo": "^10.0.4",
-    "conway-hart": "^0.1.0",
-    "tape": "^4.7.0"
+    "ray-triangle-intersection": "^1.0.3",
+    "regl": "^1.3.0",
+    "regl-camera": "^2.1.1"
   },
   "scripts": {
     "test": "tape test/*.js",
-    "start": "budo --live --open src/vis.js"
+    "start": "budo --live --open demo/vis.js",
+    "minimal": "budo --live --open minimal/minimal.js",
+    "test2": "node test/translate.js"
   },
   "repository": {
     "type": "git",
