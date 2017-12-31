@@ -244,9 +244,9 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
   document.body.appendChild(container)
 
   var panel = control([
-    {type: 'range', label: 'handles_rings', min: 3, max: 10, initial: 7, step: 1},
+    {type: 'range', label: 'handles_rings', min: 3, max: 20, initial: 7, step: 1},
 
-    {type: 'range', label: 'unconstrained_rings', min: 3, max: 20, initial: 13, step:1},
+    {type: 'range', label: 'unconstrained_rings', min: 3, max: 40, initial: 13, step:1},
 
     {type: 'button', label: 'Reset Mesh', action: function () {
       targetMesh = JSON.parse(JSON.stringify(copyMesh))
