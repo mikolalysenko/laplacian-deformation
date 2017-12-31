@@ -23,6 +23,8 @@ var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix')
 //var targetMesh = require('stanford-dragon/2')
 //var targetMesh = require('../meshes/Armadillo.json')
 var targetMesh = require('../meshes/armadillo_low_res.json')
+var defaultSelectHandle = 2096
+
 
 //var targetMesh = require('../meshes/sphere.json')
 //var targetMesh = require('../meshes/bunny.json')
@@ -141,6 +143,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
   initModule(targetMesh)
 
   targetMesh.normals = normals(targetMesh.cells, targetMesh.positions)
+  var copyMesh = JSON.parse(JSON.stringify(targetMesh))
 
   // dynamic buffers that are sent into regl.
   const positionBuffer = regl.buffer({
@@ -235,26 +238,25 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
       container.innerHTML = str
   document.body.appendChild(container)
 
-  var renderHandles = true
-  /*
-    var panel = control([
-    {type: 'checkbox', label: 'render_handles', initial: renderHandles},
-    {type: 'button', label: 'Reset Mesh', action: function () {
-    //      targetMesh = JSON.parse(JSON.stringify(copyBunny))
 
-    //var roi = roi
-    //doDeform([+0.0, 0.2, 0.0])
-    //positionBuffer.subdata(targetMesh.positions)
-    selectHandle(200)
+  var panel = control([
+    {type: 'button', label: 'Reset Mesh', action: function () {
+      targetMesh = JSON.parse(JSON.stringify(copyMesh))
+
+      positionBuffer.subdata(targetMesh.positions)
+
+      freeModule()
+      initModule(targetMesh)
+
+      selectHandle(dragTarget)
 
     }},
-    ],
-    {theme: 'light', position: 'top-right'}
-    ).on('input', data => {
-    renderHandles = data.render_handles
-    params = data
-    })
-  */
+  ],
+                      {theme: 'light', position: 'top-right'}
+                     ).on('input', data => {
+                       params = data
+                     })
+
 
   var par = document.createElement("h3")
   par.innerHTML = "Click near the white handles and drag to deform the mesh. <br>Hold \"Q\"-key, and drag the mouse, and/or scroll to change the view.<br> Hold \"T\"-key and press the mesh, to select a new region of interest. This takes a while though."
@@ -292,8 +294,11 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
 
   var prevPos = null
   var prevMousePos = null
+  var dragTarget = null
 
   function selectHandle(mainHandle) {
+    dragTarget = mainHandle
+
     var currentRing = [mainHandle]
 
     prevPos = null
@@ -393,12 +398,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
 
   }
 
-  var dragTarget = 2096
-
-  //  dragTarget = 0
-  selectHandle(dragTarget)
-
-  var projectionMatrix = mat4.perspective([], Math.PI / 4, canvas.width / canvas.height, 0.01, 1000)
+  selectHandle(defaultSelectHandle)
 
   var isDragging = false
   var isPicking = false

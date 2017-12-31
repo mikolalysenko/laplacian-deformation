@@ -62,7 +62,6 @@ function createCamera (regl, props_) {
       return element ? element.offsetHeight : window.innerHeight
     }
     mouseChange(source, function (buttons, x, y) {
-      console.log("mouse change: ", buttons)
       if (buttons & 4) {
         var dx = (x - prevX) / getWidth()
         var dy = (y - prevY) / getHeight()
