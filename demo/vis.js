@@ -318,10 +318,6 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
     }
     colorBuffer.subdata(colors)
 
-    console.log("unconstrained:", JSON.stringify(roi.unconstrained))
-    console.log("handles:", JSON.stringify(roi.handles))
-    console.log("boundary:", JSON.stringify(roi.boundary))
-
   }
 
   var dragTarget = 2096

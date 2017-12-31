@@ -51,7 +51,6 @@ deformation can look like the below:
 
 It is shown in `minimal/minimal.js` how this deformation was done.
 
-
 ### `deDeform(handlesPositions)`
 
 After calling `prepareDeform()`, we can use `doDeform()` to specify

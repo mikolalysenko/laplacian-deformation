@@ -10,6 +10,21 @@ var handlesPositionsHeapPtr = null
 var positionsHeapPtr = null
 var cellsHeapPtr =  null
 
+var calledInitModule = false
+var calledPrepareDeform = false
+
+function checkInitModule() {
+  if(!calledInitModule) {
+    throw new Error("Must call initModule() before calling this function!")
+  }
+}
+
+function checkPrepareDeform() {
+  if(!calledPrepareDeform) {
+    throw new Error("Must call prepareDeform() before calling this function!")
+  }
+}
+
 // allocate buffers that we can send into webasm
 function initModule(iMesh) {
   mesh = iMesh
@@ -38,11 +53,14 @@ function initModule(iMesh) {
   positionsHeapPtr = Module._malloc(nDataBytes)
   positionsHeap = new Uint8Array(Module.HEAPU8.buffer, positionsHeapPtr, nDataBytes);
   positionsHeap.set(new Uint8Array(positionsArr.buffer));
+
+  calledInitModule = true
 }
 
 function prepareDeform(
   iRoiHandles, iRoiUnconstrained, iRoiBoundary
 ) {
+  checkInitModule()
 
   roiIndices = []
   var j = 0
@@ -80,9 +98,12 @@ function prepareDeform(
     roiBoundaryBegin, roiUnconstrainedBegin,
     true
   )
+  calledPrepareDeform = true
 }
 
 function doDeform(handlePositions) {
+  checkPrepareDeform()
+
   var nHandlesPositionsArr = roiIndices.length - roiBoundaryBegin + roiUnconstrainedBegin
 
   var handlesPositionsArr = new Float64Array(nHandlesPositionsArr*3);
@@ -129,6 +150,8 @@ function doDeform(handlePositions) {
 }
 
 function freeModule() {
+  checkModuleInit()
+
   Module._free(positionsHeapPtr)
   Module._free(cellsHeapPtr)
 
