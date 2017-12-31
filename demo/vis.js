@@ -25,6 +25,11 @@ var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix')
 var targetMesh = require('../meshes/armadillo_low_res.json')
 var defaultSelectHandle = 2096
 
+var guiParams = {
+  'handles_rings': 7,
+  'unconstrained_rings': 13,
+
+}
 
 //var targetMesh = require('../meshes/sphere.json')
 //var targetMesh = require('../meshes/bunny.json')
@@ -235,11 +240,14 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
   var container = document.createElement('div')
   var str = `<a href="https://github.com/mikolalysenko/laplacian-deformation"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/82b228a3648bf44fc1163ef44c62fcc60081495e/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_red_aa0000.png"></a>`
 
-      container.innerHTML = str
+  container.innerHTML = str
   document.body.appendChild(container)
 
-
   var panel = control([
+    {type: 'range', label: 'handles_rings', min: 3, max: 10, initial: 7, step: 1},
+
+    {type: 'range', label: 'unconstrained_rings', min: 3, max: 20, initial: 13, step:1},
+
     {type: 'button', label: 'Reset Mesh', action: function () {
       targetMesh = JSON.parse(JSON.stringify(copyMesh))
 
@@ -251,15 +259,10 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
       selectHandle(dragTarget)
 
     }},
-  ],
-                      {theme: 'light', position: 'top-right'}
-                     ).on('input', data => {
-                       params = data
-                     })
-
+  ], {theme: 'light', position: 'top-right'}).on('input', data => { guiParams = data })
 
   var par = document.createElement("h3")
-  par.innerHTML = "Click near the white handles and drag to deform the mesh. <br>Hold \"Q\"-key, and drag the mouse, and/or scroll to change the view.<br> Hold \"T\"-key and press the mesh, to select a new region of interest. This takes a while though."
+  par.innerHTML = "Click near the white handles and drag to deform the mesh. Hold \"T\"-key and press the mesh, to select a new region of deformation. This takes a while though."
 
   var div = document.createElement('div')
   div.style.cssText = 'color: #000; position: absolute; bottom: 0px; width: 100%; padding: 5px; z-index:100;'
@@ -318,7 +321,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
       handlesSet[i] = false
     }
 
-    for(var iter = 0; iter < 13; ++iter) {
+    for(var iter = 0; iter < guiParams.handles_rings; ++iter) {
 
       var nextRing = []
 
@@ -344,7 +347,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
     roi.unconstrained = []
 
 
-    for(var iter = 0; iter < 27; ++iter) {
+    for(var iter = 0; iter < guiParams.unconstrained_rings; ++iter) {
 
       var nextRing = []
 
