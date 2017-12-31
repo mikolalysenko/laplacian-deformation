@@ -150,7 +150,7 @@ function doDeform(handlePositions) {
 }
 
 function freeModule() {
-  checkModuleInit()
+  checkInitModule()
 
   Module._free(positionsHeapPtr)
   Module._free(cellsHeapPtr)
