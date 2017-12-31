@@ -5,6 +5,10 @@ To run a minimal example do:
 
     npm run minimal
 
+To run a more advanced demo do:
+
+    npm run start
+
 In our current API, we load the module as
 
 ```javascript

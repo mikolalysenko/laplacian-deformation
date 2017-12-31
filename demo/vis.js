@@ -336,6 +336,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
   document.body.appendChild(container)
 
   var renderHandles = true
+  /*
   var panel = control([
     {type: 'checkbox', label: 'render_handles', initial: renderHandles},
     {type: 'button', label: 'Reset Mesh', action: function () {
@@ -353,9 +354,10 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
                        renderHandles = data.render_handles
                        params = data
                      })
+                     */
 
   var par = document.createElement("h3")
-  par.innerHTML = "Click near the handles and drag to deform the mesh. <br>Hold \"Q\"-key, and drag the mouse, and/or scroll to change the view."
+  par.innerHTML = "Click near the white handles and drag to deform the mesh. <br>Hold \"Q\"-key, and drag the mouse, and/or scroll to change the view.<br> Hold \"T\"-key and press the mesh, to select a new region of interest. This takes a while though."
 
   var div = document.createElement('div')
   div.style.cssText = 'color: #000; position: absolute; bottom: 0px; width: 100%; padding: 5px; z-index:100;'
