@@ -1,181 +1,221 @@
-var bits = require("bit-twiddle")
-  , almostEqual = require("almost-equal")
-var qrSolve = require("qr-solve")
-var R = new Float64Array(1024)
-var P = new Float64Array(1024)
-var D = new Float64Array(1024)
-var Z = new Float64Array(1024)
-var U = new Float64Array(1024)
+var cellsHeap
+var positionsHeap
+var mesh
+var roiIndices
+var roiBoundaryBegin
+var roiUnconstrainedBegin
 
-function reserve(n) {
-  if(n < R.length) {
-    return
+var roiIndicesHeapPtr = null
+var handlesPositionsHeapPtr = null
+var positionsHeapPtr = null
+var cellsHeapPtr =  null
+
+var calledInitModule = false
+var calledPrepareDeform = false
+
+function checkInitModule() {
+  if(!calledInitModule) {
+    throw new Error("Must call initModule() before calling this function!")
   }
-  var nsize = bits.nextPow2(n)
-  R = new Float64Array(nsize)
-  P = new Float64Array(nsize)
-  Z = new Float64Array(nsize)
-  D = new Float64Array(nsize)
-  U = new Float64Array(nsize)
 }
 
-function norm2(p) {
-  var s = 0.0
-  for(var i = 0; i < p.length; ++i) {
-    s += p[i] * p[i]
+function checkPrepareDeform() {
+  if(!calledPrepareDeform) {
+    throw new Error("Must call prepareDeform() before calling this function!")
   }
-  return s
 }
 
-function conjugateGradient(A, b, x, tolerance, max_iter) {
-  var abs = Math.abs
-    , max = Math.max
-    , EPSILON = almostEqual.FLT_EPSILON
-    , n = A.rowCount
-    , i, j, k
-    , alpha_n, alpha_d, alpha, beta, rnorm, s
-  if(!tolerance) {
-    tolerance = 1e-5
+// allocate buffers that we can send into webasm
+function initModule(iMesh) {
+  mesh = iMesh
+  var cellsArr = new Int32Array(mesh.cells.length * 3);
+  var ia = 0
+  for(var ic = 0; ic < mesh.cells.length; ++ic) {
+    var c = mesh.cells[ic]
+    cellsArr[ia++] = c[0]
+    cellsArr[ia++] = c[1]
+    cellsArr[ia++] = c[2]
   }
-  if(!max_iter) {
-    max_iter = Math.min(n, 20)
-  }
-  if(!x) {
-    if(b.buffer) {
-      x = new b.constructor(b.buffer.slice(0))
-    } else {
-      x = b.slice(0)
-    }
-  }
-  reserve(n)
-  //Compute preconditioner
-  /*
-  for(i=0; i<n; ++i) {
-    s = A.get(i, i)
-    if(abs(s) > EPSILON) {
-      D[i] = 1.0 / s
-    } else {
-      D[i] = 1.0
-    }
-  }
-  */
-  //Initialize
-  A.apply(x, R)
-  var At = A.transpose()
+  var nDataBytes = cellsArr.length * cellsArr.BYTES_PER_ELEMENT;
+  cellsHeapPtr = Module._malloc(nDataBytes)
+  cellsHeap = new Uint8Array(Module.HEAPU8.buffer, cellsHeapPtr, nDataBytes);
+  cellsHeap.set(new Uint8Array(cellsArr.buffer));
 
-  for(i=0; i<n; ++i) {
-    R[i] = b[i] - R[i]
-//    Z[i] = D[i] * R[i]
-//    P[i] = R[i]
+  var positionsArr = new Float64Array(mesh.positions.length * 3);
+  var ia = 0
+  for(var ic = 0; ic < mesh.positions.length; ++ic) {
+    var c = mesh.positions[ic]
+    positionsArr[ia++] = c[0]
+    positionsArr[ia++] = c[1]
+    positionsArr[ia++] = c[2]
   }
-  At.apply(R, P)
-  //Iterate
-  for(k=0; k<max_iter; ++k) {
-    A.apply(P, Z) // Z = A * P
-    At.apply(R, U) // U = At * R
+  var nDataBytes = positionsArr.length * positionsArr.BYTES_PER_ELEMENT;
+  positionsHeapPtr = Module._malloc(nDataBytes)
+  positionsHeap = new Uint8Array(Module.HEAPU8.buffer, positionsHeapPtr, nDataBytes);
+  positionsHeap.set(new Uint8Array(positionsArr.buffer));
 
-    alpha_n = norm2(U)
-    alpha = alpha_n / norm2(Z)
-    beta = 0.0
-    rnorm = 0.0
-    for(i=0; i<n; ++i) {
-      x[i] += alpha * P[i]
-      R[i] -= alpha * Z[i]
-      rnorm = max(rnorm, abs(R[i]))
-    }
-    if(rnorm < tolerance) {
-      break
-    }
-
-    At.apply(R, U) // U = At * R
-    beta = norm2(U)
-    beta /= alpha_n
-    for(i=0; i<n; ++i) {
-      P[i] = U[i] + beta * P[i]
-    }
-  }
-  console.log("rnorm: ", rnorm)
-  return x
+  calledInitModule = true
 }
 
-//module.exports = conjugateGradient
-var pcg = conjugateGradient
+function prepareDeform(
+  iRoiHandles, iRoiUnconstrained, iRoiBoundary
+) {
+  checkInitModule()
 
-
-
-
-var CSRMatrix = require('csr-matrix')
-var cmprecond = require('cuthill-mckee')
-var ldl = require('cholesky-solve').prepare
-var calcLaplacian = require('./src/laplacian')
-var csrgemtm = require('./src/csrgemtm')
-
-function transpose (positions) {
-  var x = new Float64Array(positions.length)
-  var y = new Float64Array(positions.length)
-  var z = new Float64Array(positions.length)
-  for (var i = 0; i < positions.length; ++i) {
-    var p = positions[i]
-    x[i] = p[0]
-    y[i] = p[1]
-    z[i] = p[2]
+  roiIndices = []
+  var j = 0
+  for(const i of iRoiHandles) {
+    roiIndices[j++] = i
   }
-  return [x, y, z]
+  roiUnconstrainedBegin = j
+  for(const i of iRoiUnconstrained) {
+    roiIndices[j++] = i
+  }
+  roiBoundaryBegin = j
+  for(const i of iRoiBoundary) {
+    roiIndices[j++] = i
+  }
+
+  var roiIndicesArr = new Int32Array(roiIndices);
+  var nDataBytes = roiIndicesArr.length * roiIndicesArr.BYTES_PER_ELEMENT;
+
+  if(roiIndicesHeapPtr !== null) {
+    Module._free(roiIndicesHeapPtr)
+    roiIndicesHeapPtr = null
+  }
+
+  roiIndicesHeapPtr = Module._malloc(nDataBytes)
+  var roiIndicesHeap = new Uint8Array(Module.HEAPU8.buffer, roiIndicesHeapPtr, nDataBytes);
+  roiIndicesHeap.set(new Uint8Array(roiIndicesArr.buffer));
+
+  prepareDeformWrap(
+    cellsHeap.byteOffset, mesh.cells.length*3,
+
+    positionsHeap.byteOffset, mesh.positions.length*3,
+
+    roiIndicesHeap.byteOffset, roiIndices.length,
+
+    roiBoundaryBegin, roiUnconstrainedBegin,
+    true
+  )
+  calledPrepareDeform = true
 }
 
-module.exports = function (cells, positions, handleIds) {
-  var N = positions.length
-  var M = N + handleIds.length
-  var coeffs = calcLaplacian(cells, positions)
-  var lapMat = CSRMatrix.fromList(coeffs, N, N)
+function doDeform(handlePositions) {
+  checkPrepareDeform()
 
-  // calculate position derivatives
-  var tpositions = transpose(positions)
-  var delta = [
-    lapMat.apply(tpositions[0], new Float64Array(N)),
-    lapMat.apply(tpositions[1], new Float64Array(N)),
-    lapMat.apply(tpositions[2], new Float64Array(N))
-  ]
+  var nHandlesPositionsArr = roiIndices.length - roiBoundaryBegin + roiUnconstrainedBegin
 
-  // augment matrix
-  for (var i = 0; i < handleIds.length; ++i) {
-    coeffs.push([i + N, handleIds[i], 1])
+  var handlesPositionsArr = new Float64Array(nHandlesPositionsArr*3);
+
+  var j = 0
+  for(var i = 0; i < handlePositions.length; ++i) {
+    handlesPositionsArr[j++] = handlePositions[i][0]
+    handlesPositionsArr[j++] = handlePositions[i][1]
+    handlesPositionsArr[j++] = handlePositions[i][2]
   }
 
-  var augMat = CSRMatrix.fromList(coeffs, M, N)
-  // calculate square matrix
-//  var mmt = csrgemtm(augMat, augMat)
-
-  /*
-  // calculate preconditioner
-  var pi = cmprecond(mmt, N)
-  */
-
-  // precalculate solver
-  var solve = qrSolve.prepare(coeffs, M, N)
-
-  var b = new Float64Array(M)
-  var y = new Float64Array(N)
-  var out = new Float64Array(3 * N)
-
-  return function (handlePositions, _out) {
-
-    for (var d = 0; d < 3; ++d) {
-      var lp = delta[d]
-      for (var i = 0; i < N; ++i) {
-        b[i] = lp[i]
-      }
-      for (var j = 0; j < handlePositions.length; ++j) {
-        b[j + N] = handlePositions[j][d]
-      }
-      // use conjugate gradient.
-      solve(b, y)
-
-      for (var k = 0; k < N; ++k) {
-        out[3 * k + d] = y[k]
-      }
-    }
-
-    return out
+  for(var i = roiBoundaryBegin; i < (roiIndices.length); ++i) {
+    handlesPositionsArr[j++] = mesh.positions[roiIndices[i]][0]
+    handlesPositionsArr[j++] = mesh.positions[roiIndices[i]][1]
+    handlesPositionsArr[j++] = mesh.positions[roiIndices[i]][2]
   }
+  // deform.
+
+  var nDataBytes = handlesPositionsArr.length * handlesPositionsArr.BYTES_PER_ELEMENT;
+
+  if(handlesPositionsHeapPtr !== null) {
+    Module._free(handlesPositionsHeapPtr)
+    handlesPositionsHeapPtr = null
+  }
+
+  handlesPositionsHeapPtr = Module._malloc(nDataBytes)
+  var handlesPositionsHeap = new Uint8Array(Module.HEAPU8.buffer, handlesPositionsHeapPtr, nDataBytes);
+  handlesPositionsHeap.set(new Uint8Array(handlesPositionsArr.buffer));
+
+  doDeformWrap(
+    handlesPositionsHeap.byteOffset, nHandlesPositionsArr,
+
+    positionsHeap.byteOffset
+  )
+
+  var temp = new Float64Array(positionsHeap.buffer, positionsHeap.byteOffset, mesh.positions.length*3)
+
+  var result = []
+  for(var i = 0; i < mesh.positions.length; ++i) {
+    result[i] = [temp[3*i + 0], temp[3*i + 1], temp[3*i + 2]]
+  }
+
+  return result
+}
+
+function freeModule() {
+  checkInitModule()
+
+  Module._free(positionsHeapPtr)
+  Module._free(cellsHeapPtr)
+
+  if(roiIndicesHeapPtr !== null) {
+    Module._free(roiIndicesHeapPtr)
+    roiIndicesHeapPtr = null
+  }
+
+  if(handlesPositionsHeapPtr !== null) {
+    Module._free(handlesPositionsHeapPtr)
+    handlesPositionsHeapPtr = null
+  }
+
+  freeDeformWrap()
+
+  // TODO: clean up memory allocated by _malloc
+}
+
+module.exports.load = function(callback) {
+
+  Module = {};
+  new Promise((resolve) => {
+    fetch('laplacian_deformation.wasm')    // load the .wasm file
+      .then(response => response.arrayBuffer())
+      .then((buffer) => {    //return ArrayBuffer
+        Module.wasmBinary = buffer;   // assign buffer to Module
+        const script = document.createElement('script');
+        script.src = 'laplacian_deformation.js';   // set script source
+
+        Module['onRuntimeInitialized'] = function() {
+          prepareDeformWrap = Module.cwrap(
+            'prepareDeform', null, [
+              'number', 'number', // cells, nCells
+
+              'number', 'number', // positions, nPositions,
+
+              'number', 'number', // handles, nHandles
+
+              'number', 'number', // boundaryBegin, unconstrainedBegin
+
+              'number',  // ROT_INV
+            ]
+          );
+          doDeformWrap = Module.cwrap(
+            'doDeform', null, [
+              'number', 'number', // handlePositions, nHandlePositions
+              'number', // outPositions
+            ]
+          );
+
+          freeDeformWrap = Module.cwrap(
+            'freeDeform', null, [
+
+            ]
+          );
+          callback(initModule, prepareDeform, doDeform, freeModule)
+        }
+
+        script.onload = () => {    // once script has loaded
+          resolve(Module);    // return Module
+        };
+        document.body.appendChild(script); // append script to DOM
+      });
+  }).then((Module) => {
+
+  })
 }

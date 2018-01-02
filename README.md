@@ -1,32 +1,72 @@
-laplacian deformation demo[WIP]
+laplacian deformation module
 =====================
 
-![](img/bunny.png)
+![](img/demo.png)
 
-This is a demo that implements laplacian deformation in
-Javascript. Laplacian deformation is a technique that allows you to
-deform an arbitrary mesh as if it were a cloth-like material. In the
-demo, you can grab handles on the mesh, and drag them. The vertices of
-the rest of the mesh are then smoothly updated, resulting in a
-deformation. The deformations produced by this technique tend to look
-natural, since the general shape of the mesh is preserved. This kind
-of technique is useful in 3D-modeling software.
+This module implements [laplacian surface editing](https://people.eecs.berkeley.edu/~jrs/meshpapers/SCOLARS.pdf).
+This technique allows you to deform the surface of a mesh, while still preserving the details of the surface.
+We implement this by minimizing the energy function (5) in the linked paper.
 
-Our implementation is based on the description by [Christopher
-Tralie](http://www.ctralie.com/Teaching/LapMesh/). To solve the least
-squares linear system he describes, we use our own implementation of
-the [QR-decompositon](https://github.com/Erkaman/qr-solve). We also
-attempted using the [Cholesky
-Decompositon](https://github.com/Erkaman/cholesky-solve), and the
-[Conjugate Gradient
-Method](https://github.com/mikolalysenko/conjugate-gradient), however
-we found that both methods had issues with numerical instability, and
-thus they could not be used.
+To run a minimal example do:
 
-We plan to further optimize our implementation, and turn it into a
-user-friendly module. Note that right now the code of the demo is
-rather messy, and not very readable. It will be cleaned up soon.
+    npm run minimal
 
-# Video
+To run a more advanced demo do:
 
-[![Result](http://img.youtube.com/vi/1bykYClXkRg/0.jpg)](https://www.youtube.com/watch?v=1bykYClXkRg)
+    npm run start
+
+In our current API, we load the module as
+
+```javascript
+require("laplacian-deformation").load(function(initModule,prepareDeform, doDeform, freeModule) {
+// code that uses the API here.
+}
+```
+
+The API consists of four methods. We describe them below.
+
+### `initModule(mesh)`
+
+initializes the module for doing deformation on `mesh`. Must be called
+before any other methods in the API.
+
+### `prepareDeform(handles, unconstrained, stationary)`
+
+Does precalculations necessary for performing deformation on a region
+of vertices of the mesh. Note that this is a slow operation that
+performs performs cholesky decomposition!
+
+* `handles`. vertices that can be freely manipulated.
+
+* `unconstrained` these are vertices that are free, and are solved for
+  in the laplacian deformation calculations.
+
+* `boundary` These vertices specifies the boundary of the region
+  we are performing deformation on.
+
+Some images will serve to clarify the meaning of the above
+parameters.
+
+![](img/minimal1.png)
+
+In the image, `handles` is yellow, `unconstrained` is blue, `boundary`
+is red, and the gray region are vertices not affected by the
+deformation. Only yellow, blue and red vertices are affected by the deformation.
+
+The user of the library deforms the mesh by setting the positions of
+the `handles` vertices by calling `doDeform`. One possible
+deformation can look like the below:
+
+![](img/minimal2.png)
+
+It is shown in `minimal/minimal.js` how this deformation was done.
+
+### `deDeform(handlesPositions)`
+
+After calling `prepareDeform()`, we can use `doDeform()` to specify
+the positions of the `handles` vertices, and thus deform the
+mesh. Returns the vertex coordinates of the deformed mesh.
+
+* `handlesPositions` is simply an array of coordinates of the
+format `[[x,y,z], [x,y,z], ...]`. The first coordinate sets the
+positions of the handle `handles[0]`, and so on.
