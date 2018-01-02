@@ -20,11 +20,11 @@ var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix')
 //var targetMesh = require('stanford-dragon/2')
 //var targetMesh = require('../meshes/Armadillo.json')
 var targetMesh = require('../meshes/armadillo_low_res.json')
-var defaultSelectHandle = 2096
+var defaultSelectHandle = 17128
 
 var guiParams = {
-  'handles_rings': 7,
-  'unconstrained_rings': 13,
+  'handles_rings': 13,
+  'unconstrained_rings': 25,
 
 }
 
@@ -108,6 +108,7 @@ function fitMesh(mesh) {
       il = i
     }
   }
+  
 
   /*
     Now that we have the AABB, we can use that info to the center the mesh,
@@ -301,7 +302,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
   
   function selectHandle(mainHandle) {
     dragTarget = mainHandle
-
+    
     var currentRing = [mainHandle]
 
     prevPos = null
@@ -672,7 +673,8 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
     center: [0, 0.0, 0],
     distance : 2.0,
     rotationSpeed: 0.5,
-    phi: 1.1,
+    phi: 0.3,
+    theta: -3.14*0.5,
     damping: 0.3,
     rotationSpeed: 1.1,
     renderOnDirty : false
