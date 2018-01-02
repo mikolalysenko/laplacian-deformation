@@ -8,13 +8,10 @@ const canvas = document.body.appendChild(document.createElement('canvas'))
 var mousePosition = require('mouse-position')(canvas)
 
 const regl = require('regl')({canvas: canvas})
-const camera = require('./modified-regl-camera.js')(regl, {
-  center: [0, 0.0, 0],
-  distance : 2.0,
-  rotationSpeed: 0.5,
-  phi: 1.1,
-  renderOnDirty : false
-})
+
+
+
+
 
 window.addEventListener('resize', fit(canvas), false)
 
@@ -262,7 +259,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
   ], {theme: 'light', position: 'top-right'}).on('input', data => { guiParams = data })
 
   var par = document.createElement("h3")
-  par.innerHTML = "Click near the white handles and drag to deform the mesh. Hold \"T\"-key and press the mesh, to select a new region of deformation. This takes a while though."
+  par.innerHTML = "Click the white region and drag to deform the mesh. Hold shift-key and press , to select a new region of deformation. This takes a while though."
 
   var div = document.createElement('div')
   div.style.cssText = 'color: #000; position: absolute; bottom: 0px; width: 300; padding: 5px; z-index:100;'
@@ -299,6 +296,9 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
   var prevMousePos = null
   var dragTarget = null
 
+  var unconstrainedSet = null // set of unconstrained vertices.
+  var handlesSet = null // set of handles.
+  
   function selectHandle(mainHandle) {
     dragTarget = mainHandle
 
@@ -313,8 +313,8 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
 
     roi.handles = []
 
-    var unconstrainedSet = []
-    var handlesSet = []
+    unconstrainedSet = []
+    handlesSet = []
 
     for(var i = 0; i < targetMesh.positions.length; ++i) {
       unconstrainedSet[i] = false
@@ -409,7 +409,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
   window.onkeydown = function(e) {
     var key = e.keyCode ? e.keyCode : e.which;
 
-    if (key == 84) { // t
+    if (key == 16) { // t
       isPicking = true
     }
   }
@@ -417,7 +417,7 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
   window.onkeyup = function(e) {
     var key = e.keyCode ? e.keyCode : e.which;
 
-    if (key == 84) {
+    if (key == 16) {
       isPicking = false
     }
   }
@@ -431,44 +431,252 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
   var curProjection = null
 
   function mousedown(ev) {
-    if(isPicking) {
-      var ret = getCameraRay(camera.view, camera.projection)
-      var d = ret[0]
-      var o = ret[1]
+    var ret = getCameraRay(camera.view, camera.projection)
+    var d = ret[0]
+    var o = ret[1]
 
-      var minDist = Number.MAX_VALUE
-      var minHandle = -1
+    var minDist = Number.MAX_VALUE
+    var minHandle = -1
 
-      for(var i = 0; i < targetMesh.cells.length; ++i) {
-        var c = targetMesh.cells[i]
+    for(var i = 0; i < targetMesh.cells.length; ++i) {
+      var c = targetMesh.cells[i]
 
-        var p0 = targetMesh.positions[c[0]]
-        var p1 = targetMesh.positions[c[1]]
-        var p2 = targetMesh.positions[c[2]]
+      var p0 = targetMesh.positions[c[0]]
+      var p1 = targetMesh.positions[c[1]]
+      var p2 = targetMesh.positions[c[2]]
 
-        var intersectPoint = rayTriIntersect([], o, d, [p0, p1, p2])
+      var intersectPoint = rayTriIntersect([], o, d, [p0, p1, p2])
 
-        if(intersectPoint != null) {
-          var dist = vec3.distance(intersectPoint, o)
+      if(intersectPoint != null) {
+        var dist = vec3.distance(intersectPoint, o)
 
-          if(dist < minDist) {
-            minDist = dist
-            minHandle = c[0]
-            break
-          }
+        if(dist < minDist) {
+          minDist = dist
+          minHandle = c[0]
+          break
         }
       }
+    }
 
+    if(isPicking) {
       if(minHandle != -1) {
         selectHandle(minHandle)
       }
 
     } else {
       if (ev.button === 0) {
-        isDragging = true
+  //          var unconstrainedSet = null // set of unconstrained vertices.
+  //var handlesSet = null // set of handles.
+        if(unconstrainedSet != null && handlesSet != null && (unconstrainedSet[minHandle] || handlesSet[minHandle])) {
+            
+          isDragging = true
+        } else {
+          
+         // check what we click. if on region of interest, then dragging. when dragging .disable camera mouseChange
+         
+         // if not on region of interest, then we do nothing in here.
+          
+        }
       }
     }
   }
+  
+  // regl-camera module begin.
+  var mouseChange = require('mouse-change')
+  var mouseWheel = require('mouse-wheel')
+  var identity = require('gl-mat4/identity')
+  var perspective = require('gl-mat4/perspective')
+  var lookAt = require('gl-mat4/lookAt')
+  
+  var isBrowser = typeof window !== 'undefined'
+  function createCamera (regl, props_) {
+    var props = props_ || {}
+  
+    // Preserve backward-compatibilty while renaming preventDefault -> noScroll
+    if (typeof props.noScroll === 'undefined') {
+      props.noScroll = props.preventDefault;
+    }
+  
+    var cameraState = {
+      view: identity(new Float32Array(16)),
+      projection: identity(new Float32Array(16)),
+      center: new Float32Array(props.center || 3),
+      theta: props.theta || 0,
+      phi: props.phi || 0,
+      distance: Math.log(props.distance || 10.0),
+      eye: new Float32Array(3),
+      up: new Float32Array(props.up || [0, 1, 0]),
+      fovy: props.fovy || Math.PI / 4.0,
+      near: typeof props.near !== 'undefined' ? props.near : 0.01,
+      far: typeof props.far !== 'undefined' ? props.far : 1000.0,
+      noScroll: typeof props.noScroll !== 'undefined' ? props.noScroll : false,
+      flipY: !!props.flipY,
+      dtheta: 0,
+      dphi: 0,
+      rotationSpeed: typeof props.rotationSpeed !== 'undefined' ? props.rotationSpeed : 1,
+      zoomSpeed: typeof props.zoomSpeed !== 'undefined' ? props.zoomSpeed : 1,
+      renderOnDirty: typeof props.renderOnDirty !== undefined ? !!props.renderOnDirty : false
+    }
+  
+    var element = props.element
+    var damping = typeof props.damping !== 'undefined' ? props.damping : 0.9
+  
+    var right = new Float32Array([1, 0, 0])
+    var front = new Float32Array([0, 0, 1])
+  
+    var minDistance = Math.log('minDistance' in props ? props.minDistance : 0.1)
+    var maxDistance = Math.log('maxDistance' in props ? props.maxDistance : 1000)
+  
+    var ddistance = 0
+  
+    var prevX = 0
+    var prevY = 0
+  
+    if (isBrowser && props.mouse !== false) {
+      var source = element || regl._gl.canvas
+  
+      function getWidth () {
+        return element ? element.offsetWidth : window.innerWidth
+      }
+  
+      function getHeight () {
+        return element ? element.offsetHeight : window.innerHeight
+      }
+      mouseChange(source, function (buttons, x, y) {
+        if (buttons & 1 && !isDragging) { // move camera on left-click.
+          var dx = (x - prevX) / getWidth()
+          var dy = (y - prevY) / getHeight()
+  
+          cameraState.dtheta += cameraState.rotationSpeed * 4.0 * dx
+          cameraState.dphi += cameraState.rotationSpeed * 4.0 * dy
+          cameraState.dirty = true;
+        }
+        prevX = x
+        prevY = y
+      })
+  
+      mouseWheel(source, function (dx, dy) {
+        ddistance += dy / getHeight() * cameraState.zoomSpeed
+        cameraState.dirty = true;
+      }, props.noScroll)
+    }
+  
+    function damp (x) {
+      var xd = x * damping
+      if (Math.abs(xd) < 0.1) {
+        return 0
+      }
+      cameraState.dirty = true;
+      return xd
+    }
+  
+    function clamp (x, lo, hi) {
+      return Math.min(Math.max(x, lo), hi)
+    }
+  
+    function updateCamera (props) {
+      Object.keys(props).forEach(function (prop) {
+        cameraState[prop] = props[prop]
+      })
+  
+      var center = cameraState.center
+      var eye = cameraState.eye
+      var up = cameraState.up
+      var dtheta = cameraState.dtheta
+      var dphi = cameraState.dphi
+  
+      cameraState.theta += dtheta
+      cameraState.phi = clamp(
+        cameraState.phi + dphi,
+        -Math.PI / 2.0,
+        Math.PI / 2.0)
+      cameraState.distance = clamp(
+        cameraState.distance + ddistance,
+        minDistance,
+        maxDistance)
+  
+      cameraState.dtheta = damp(dtheta)
+      cameraState.dphi = damp(dphi)
+      ddistance = damp(ddistance)
+  
+      var theta = cameraState.theta
+      var phi = cameraState.phi
+      var r = Math.exp(cameraState.distance)
+  
+      var vf = r * Math.sin(theta) * Math.cos(phi)
+      var vr = r * Math.cos(theta) * Math.cos(phi)
+      var vu = r * Math.sin(phi)
+  
+      for (var i = 0; i < 3; ++i) {
+        eye[i] = center[i] + vf * front[i] + vr * right[i] + vu * up[i]
+      }
+  
+      lookAt(cameraState.view, eye, center, up)
+    }
+  
+    cameraState.dirty = true;
+  
+    var injectContext = regl({
+      context: Object.assign({}, cameraState, {
+        dirty: function () {
+          return cameraState.dirty;
+        },
+        projection: function (context) {
+          perspective(cameraState.projection,
+            cameraState.fovy,
+            context.viewportWidth / context.viewportHeight,
+            cameraState.near,
+            cameraState.far)
+          if (cameraState.flipY) { cameraState.projection[5] *= -1 }
+          return cameraState.projection
+        }
+      }),
+      uniforms: Object.keys(cameraState).reduce(function (uniforms, name) {
+        uniforms[name] = regl.context(name)
+        return uniforms
+      }, {})
+    })
+  
+    function setupCamera (props, block) {
+      if (typeof setupCamera.dirty !== 'undefined') {
+        cameraState.dirty = setupCamera.dirty || cameraState.dirty
+        setupCamera.dirty = undefined;
+      }
+  
+      if (props && block) {
+        cameraState.dirty = true;
+      }
+  
+      if (cameraState.renderOnDirty && !cameraState.dirty) return;
+  
+      if (!block) {
+        block = props
+        props = {}
+      }
+  
+      updateCamera(props)
+      injectContext(block)
+      cameraState.dirty = false;
+    }
+  
+    Object.keys(cameraState).forEach(function (name) {
+      setupCamera[name] = cameraState[name]
+    })
+  
+    return setupCamera
+    //return null
+  }
+  // regl-camera module end.
+  
+  const camera = createCamera(regl, {
+    center: [0, 0.0, 0],
+    distance : 2.0,
+    rotationSpeed: 0.5,
+    phi: 1.1,
+    damping: 0.3,
+    rotationSpeed: 1.1,
+    renderOnDirty : false
+  })
 
   canvas.addEventListener('mousedown', mousedown, false)
   regl.frame(({}) => {
