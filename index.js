@@ -67,14 +67,17 @@ function prepareDeform(
   for(const i of iRoiHandles) {
     roiIndices[j++] = i
   }
-  roiUnconstrainedBegin = j
-  for(const i of iRoiUnconstrained) {
-    roiIndices[j++] = i
-  }
+
   roiBoundaryBegin = j
   for(const i of iRoiBoundary) {
     roiIndices[j++] = i
   }
+
+  roiUnconstrainedBegin = j
+  for(const i of iRoiUnconstrained) {
+    roiIndices[j++] = i
+  }
+
 
   var roiIndicesArr = new Int32Array(roiIndices);
   var nDataBytes = roiIndicesArr.length * roiIndicesArr.BYTES_PER_ELEMENT;
@@ -95,7 +98,7 @@ function prepareDeform(
 
     roiIndicesHeap.byteOffset, roiIndices.length,
 
-    roiBoundaryBegin, roiUnconstrainedBegin,
+    roiUnconstrainedBegin,
     true
   )
   calledPrepareDeform = true
@@ -104,7 +107,7 @@ function prepareDeform(
 function doDeform(handlePositions) {
   checkPrepareDeform()
 
-  var nHandlesPositionsArr = roiIndices.length - roiBoundaryBegin + roiUnconstrainedBegin
+  var nHandlesPositionsArr = roiUnconstrainedBegin
 
   var handlesPositionsArr = new Float64Array(nHandlesPositionsArr*3);
 
@@ -115,7 +118,7 @@ function doDeform(handlePositions) {
     handlesPositionsArr[j++] = handlePositions[i][2]
   }
 
-  for(var i = roiBoundaryBegin; i < (roiIndices.length); ++i) {
+  for(var i = roiBoundaryBegin; i < roiUnconstrainedBegin; ++i) {
     handlesPositionsArr[j++] = mesh.positions[roiIndices[i]][0]
     handlesPositionsArr[j++] = mesh.positions[roiIndices[i]][1]
     handlesPositionsArr[j++] = mesh.positions[roiIndices[i]][2]
@@ -188,11 +191,11 @@ module.exports.load = function(callback) {
 
               'number', 'number', // positions, nPositions,
 
-              'number', 'number', // handles, nHandles
+              'number', 'number', // roiIndices, nRoi
 
-              'number', 'number', // boundaryBegin, unconstrainedBegin
+              'number', // unconstrainedBegin
 
-              'number',  // ROT_INV
+              'number',  // RSI
             ]
           );
           doDeformWrap = Module.cwrap(
