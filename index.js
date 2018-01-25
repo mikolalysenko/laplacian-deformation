@@ -9,7 +9,6 @@ var roiIndicesHeapPtr = null
 var handlesPositionsHeapPtr = null
 var positionsHeapPtr = null
 var cellsHeapPtr =  null
-var roiWeightsHeapPtr = null
 
 var calledInitModule = false
 var calledPrepareDeform = false
@@ -59,7 +58,7 @@ function initModule(iMesh) {
 }
 
 function prepareDeform(
-  iRoiHandles, iRoiUnconstrained, iRoiBoundary, iRoiWeights
+  iRoiHandles, iRoiUnconstrained, iRoiBoundary
 ) {
   checkInitModule()
 
@@ -94,22 +93,6 @@ function prepareDeform(
   var roiIndicesHeap = new Uint8Array(Module.HEAPU8.buffer, roiIndicesHeapPtr, nDataBytes);
   roiIndicesHeap.set(new Uint8Array(roiIndicesArr.buffer));
 
-  
-  
-  
-  
-  
-  var roiWeightsArr = new Float64Array(iRoiWeights);
-  var nDataBytes = roiWeightsArr.length * roiWeightsArr.BYTES_PER_ELEMENT;
-
-  if(roiWeightsHeapPtr !== null) {
-    Module._free(roiWeightsHeapPtr)
-    roiWeightsHeapPtr = null
-  }
-  roiWeightsHeapPtr = Module._malloc(nDataBytes)
-  var roiWeightsHeap = new Uint8Array(Module.HEAPU8.buffer, roiWeightsHeapPtr, nDataBytes);
-  roiWeightsHeap.set(new Uint8Array(roiWeightsArr.buffer));
-  
   prepareDeformWrap(
     cellsHeap.byteOffset, mesh.cells.length*3,
 
@@ -117,8 +100,6 @@ function prepareDeform(
 
     roiIndicesHeap.byteOffset, roiIndices.length,
     
-    roiWeightsHeap.byteOffet,
-
     roiUnconstrainedBegin,
     true
   )
@@ -213,8 +194,6 @@ module.exports.load = function(callback) {
               'number', 'number', // positions, nPositions,
 
               'number', 'number', // roiIndices, nRoi
-
-              'number',           // roiWeights
 
               'number', // unconstrainedBegin
 

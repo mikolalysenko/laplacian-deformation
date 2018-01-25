@@ -313,7 +313,6 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
     }
 
     roi.handles = []
-    roi.weights = []
 
     unconstrainedSet = []
     handlesSet = []
@@ -334,7 +333,6 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
           continue
 
         roi.handles.push(e)
-        roi.weights.push(1.0)
         visited[e] = true
         handlesSet[e] = true
 
@@ -383,12 +381,11 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
 
       boundaryIndices.push(e)
       roi.boundary.push(e)
-      roi.weights.push(1.0)
 
       visited[e] = true
     }
 
-    prepareDeform(roi.handles, roi.unconstrained, roi.boundary, roi.weights)
+    prepareDeform(roi.handles, roi.unconstrained, roi.boundary)
 
     var colors = []
     for(var i = 0; i < targetMesh.normals.length; ++i) {
