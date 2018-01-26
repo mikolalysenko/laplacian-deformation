@@ -2,7 +2,6 @@ var cellsHeap
 var positionsHeap
 var mesh
 var roiIndices
-var roiBoundaryBegin
 var roiUnconstrainedBegin
 
 var roiIndicesHeapPtr = null
@@ -58,7 +57,7 @@ function initModule(iMesh) {
 }
 
 function prepareDeform(
-  iRoiHandles, iRoiUnconstrained, iRoiBoundary
+  iRoiHandles, iRoiUnconstrained
 ) {
   checkInitModule()
 
@@ -67,12 +66,9 @@ function prepareDeform(
   for(const i of iRoiHandles) {
     roiIndices[j++] = i
   }
+
   roiUnconstrainedBegin = j
   for(const i of iRoiUnconstrained) {
-    roiIndices[j++] = i
-  }
-  roiBoundaryBegin = j
-  for(const i of iRoiBoundary) {
     roiIndices[j++] = i
   }
 
@@ -94,8 +90,8 @@ function prepareDeform(
     positionsHeap.byteOffset, mesh.positions.length*3,
 
     roiIndicesHeap.byteOffset, roiIndices.length,
-
-    roiBoundaryBegin, roiUnconstrainedBegin,
+    
+    roiUnconstrainedBegin,
     true
   )
   calledPrepareDeform = true
@@ -104,7 +100,7 @@ function prepareDeform(
 function doDeform(handlePositions) {
   checkPrepareDeform()
 
-  var nHandlesPositionsArr = roiIndices.length - roiBoundaryBegin + roiUnconstrainedBegin
+  var nHandlesPositionsArr = roiUnconstrainedBegin
 
   var handlesPositionsArr = new Float64Array(nHandlesPositionsArr*3);
 
@@ -114,13 +110,6 @@ function doDeform(handlePositions) {
     handlesPositionsArr[j++] = handlePositions[i][1]
     handlesPositionsArr[j++] = handlePositions[i][2]
   }
-
-  for(var i = roiBoundaryBegin; i < (roiIndices.length); ++i) {
-    handlesPositionsArr[j++] = mesh.positions[roiIndices[i]][0]
-    handlesPositionsArr[j++] = mesh.positions[roiIndices[i]][1]
-    handlesPositionsArr[j++] = mesh.positions[roiIndices[i]][2]
-  }
-  // deform.
 
   var nDataBytes = handlesPositionsArr.length * handlesPositionsArr.BYTES_PER_ELEMENT;
 
@@ -188,11 +177,11 @@ module.exports.load = function(callback) {
 
               'number', 'number', // positions, nPositions,
 
-              'number', 'number', // handles, nHandles
+              'number', 'number', // roiIndices, nRoi
 
-              'number', 'number', // boundaryBegin, unconstrainedBegin
+              'number', // unconstrainedBegin
 
-              'number',  // ROT_INV
+              'number',  // RSI
             ]
           );
           doDeformWrap = Module.cwrap(

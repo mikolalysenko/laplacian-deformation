@@ -1,0 +1,1 @@
+emcc src/laplacian_deformation.cpp -o ../laplacian_deformation.js -O3 -I./deps -s WASM=1 -s TOTAL_MEMORY=536870912 -s EXPORTED_FUNCTIONS="['_prepareDeform','_doDeform', '_freeDeform']"
