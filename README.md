@@ -1,6 +1,8 @@
 laplacian deformation module
 =====================
 
+[CLICK HERE FOR DEMO](https://mikolalysenko.github.io/laplacian-deformation/demo.html)
+
 ![](img/demo.png)
 
 This module implements [laplacian surface editing](https://people.eecs.berkeley.edu/~jrs/meshpapers/SCOLARS.pdf).
