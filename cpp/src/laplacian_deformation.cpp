@@ -67,9 +67,6 @@ struct SorterEntry {
 	}
 } sorterEntry;
 
-
-
-
 std::vector<Triplet> calcEnergyMatrixCoeffs(
 	const Vec& roiPositions,
 	const Vec& delta,
@@ -220,7 +217,6 @@ std::vector<Triplet> calcEnergyMatrixCoeffs(
 	return result;
 }
 
-
 double hypot(double x, double y, double z) {
 	return sqrt(
 		x * x +
@@ -228,7 +224,7 @@ double hypot(double x, double y, double z) {
 		z * z);
 }
 
-
+// cotangent discretization of the laplacian.
 std::vector<Triplet> calcCotangentLaplacianCoeffs(
 
 	int* cells, const int nCells,
@@ -354,8 +350,6 @@ std::vector<Triplet> calcCotangentLaplacianCoeffs(
 	}
 	std::sort(result.begin(), result.end(), sorter);
 
-	//entries.length = ptr;
-
 	{
 		std::vector<Triplet> result2;
 
@@ -387,15 +381,10 @@ std::vector<Triplet> calcCotangentLaplacianCoeffs(
 	}
 	rowBegins.push_back(result.size());
 
-	//rowBegins.push_back()
-
-
 	return result;
 }
 
-
-// coefficients of laplacian matrix for surface.
-std::vector<Triplet> calcLaplacianCoeffs(
+std::vector<Triplet> calcUniformLaplacianCoeffs(
 	int nRoi,
 	std::vector<std::vector<int> > adj,
 
@@ -422,8 +411,6 @@ std::vector<Triplet> calcLaplacianCoeffs(
 
 	return result;
 }
-
-
 
 struct State {
 	bool RSI;
@@ -463,6 +450,10 @@ void freeDeform() {
 	}
 }
 
+/*
+For reference, the equation numbers refer to the paper:
+https://people.eecs.berkeley.edu/~jrs/meshpapers/SCOLARS.pdf
+*/
 void prepareDeform(
 	int* cells, const int nCells,
 
@@ -527,6 +518,7 @@ void prepareDeform(
 	
 	/*
 	// cotangent laplacian doesnt yield any good results, for some reason :/
+	so we don't use it. instead, use uniform.
 	laplacianCoeffs = calcCotangentLaplacianCoeffs(
 		
 		cells, nCells, 
@@ -539,12 +531,10 @@ void prepareDeform(
 		roiPositions);
 		*/	
 	  
-	laplacianCoeffs = calcLaplacianCoeffs(nRoi, adj, rowBegins);
+	laplacianCoeffs = calcUniformLaplacianCoeffs(nRoi, adj, rowBegins);
 
 	s.lapMat = SpMat(nRoi * 3, nRoi * 3);
 	s.lapMat.setFromTriplets(laplacianCoeffs.begin(), laplacianCoeffs.end());
-
-
 
 	// by simply multiplying by the laplacian matrix, we can compute the laplacian coordinates(the delta coordinates)
 	// of the vertices in ROI.
@@ -650,7 +640,7 @@ void doDeform(double* newHandlePositions, int nHandlePositions, double* outPosit
 	}
 
 	if (s.RSI) {
-		// if minimizing (5), the a local scaling is introduced by the solver.
+		// if minimizing (5), a local scaling is introduced by the solver.
 		// so we need to normalize the delta coordinates of the deformed vertices back to their
 		// original lengths.
 		// otherwise, the mesh will increase in size when manipulating the mesh, which is not desirable.
