@@ -9,10 +9,6 @@ var mousePosition = require('mouse-position')(canvas)
 
 const regl = require('regl')({canvas: canvas})
 
-
-
-
-
 window.addEventListener('resize', fit(canvas), false)
 
 var cameraPosFromViewMatrix   = require('gl-camera-pos-from-view-matrix')
@@ -122,7 +118,7 @@ function fitMesh(mesh) {
       -0.5 * (aabb.min[0] + aabb.max[0]),
       -0.5 * (aabb.min[1] + aabb.max[1]),
       -0.5 * (aabb.min[2] + aabb.max[2]),
-  ]
+  ] 
 
   for(var j = 0; j < mesh.positions.length; ++j) {
 
@@ -230,7 +226,6 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
   var roi = {
   }
 
-
   /*
     Create GUI
 
@@ -275,12 +270,25 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
     var handlesPositionsArr = []
     var j = 0
     for(var i = 0; i < (roi.handles.length); ++i) {
+        
+      if(i >= roi.boundaryIndices)   {
+      handlesPositionsArr[j++] =
+        [
+          targetMesh.positions[roi.handles[i]][0],
+          targetMesh.positions[roi.handles[i]][1],
+          targetMesh.positions[roi.handles[i]][2]
+        ]
+     
+      
+      } else {
+        
       handlesPositionsArr[j++] =
         [
           targetMesh.positions[roi.handles[i]][0]  + offset[0],
           targetMesh.positions[roi.handles[i]][1]  + offset[1],
           targetMesh.positions[roi.handles[i]][2]  + offset[2]
         ]
+      }
     }
 
     var result = doDeform(handlesPositionsArr)
@@ -370,22 +378,20 @@ require("../index.js").load(function(initModule, prepareDeform, doDeform, freeMo
       currentRing = nextRing
     }
 
-    roi.boundary = []
 
-    var boundaryIndices = []
+    roi.boundaryIndices = roi.handles.length
     for(var i = 0; i < currentRing.length; ++i) {
       var e = currentRing[i]
 
       if(visited[e])
         continue
 
-      boundaryIndices.push(e)
-      roi.boundary.push(e)
+      roi.handles.push(e)
 
       visited[e] = true
     }
 
-    prepareDeform(roi.handles, roi.unconstrained, roi.boundary)
+    prepareDeform(roi.handles, roi.unconstrained)
 
     var colors = []
     for(var i = 0; i < targetMesh.normals.length; ++i) {

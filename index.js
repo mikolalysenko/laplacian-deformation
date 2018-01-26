@@ -2,7 +2,6 @@ var cellsHeap
 var positionsHeap
 var mesh
 var roiIndices
-var roiBoundaryBegin
 var roiUnconstrainedBegin
 
 var roiIndicesHeapPtr = null
@@ -58,7 +57,7 @@ function initModule(iMesh) {
 }
 
 function prepareDeform(
-  iRoiHandles, iRoiUnconstrained, iRoiBoundary
+  iRoiHandles, iRoiUnconstrained
 ) {
   checkInitModule()
 
@@ -68,18 +67,10 @@ function prepareDeform(
     roiIndices[j++] = i
   }
 
-  roiBoundaryBegin = j
-  for(const i of iRoiBoundary) {
-    roiIndices[j++] = i
-  }
-
   roiUnconstrainedBegin = j
   for(const i of iRoiUnconstrained) {
     roiIndices[j++] = i
   }
-  
-  
-
 
   var roiIndicesArr = new Int32Array(roiIndices);
   var nDataBytes = roiIndicesArr.length * roiIndicesArr.BYTES_PER_ELEMENT;
@@ -119,13 +110,6 @@ function doDeform(handlePositions) {
     handlesPositionsArr[j++] = handlePositions[i][1]
     handlesPositionsArr[j++] = handlePositions[i][2]
   }
-
-  for(var i = roiBoundaryBegin; i < roiUnconstrainedBegin; ++i) {
-    handlesPositionsArr[j++] = mesh.positions[roiIndices[i]][0]
-    handlesPositionsArr[j++] = mesh.positions[roiIndices[i]][1]
-    handlesPositionsArr[j++] = mesh.positions[roiIndices[i]][2]
-  }
-  // deform.
 
   var nDataBytes = handlesPositionsArr.length * handlesPositionsArr.BYTES_PER_ELEMENT;
 

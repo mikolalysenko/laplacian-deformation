@@ -102,17 +102,11 @@ namespace demo {
 		GLuint positionVbo;
 		GLuint normalVbo;
 		GLuint colorVbo;
-		GLuint uvVbo;
-
-		std::string name;
-
-		int matId;
-
+		
 		std::vector<float> positions;
 		std::vector<float> normals;
 		std::vector<float> colors;
-		std::vector<float> uvs;
-
+		
 		// upload mesh to GPU.
 		void UploadMesh() {
 			GL_C(glGenBuffers(1, &this->positionVbo));
@@ -126,11 +120,6 @@ namespace demo {
 			GL_C(glGenBuffers(1, &this->colorVbo));
 			GL_C(glBindBuffer(GL_ARRAY_BUFFER, this->colorVbo));
 			GL_C(glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*this->colors.size(), this->colors.data(), GL_STATIC_DRAW));
-
-			GL_C(glGenBuffers(1, &this->uvVbo));
-			GL_C(glBindBuffer(GL_ARRAY_BUFFER, this->uvVbo));
-			GL_C(glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*this->uvs.size(), this->uvs.data(), GL_STATIC_DRAW));
-
 		}
 	};
 
@@ -453,10 +442,6 @@ namespace demo {
 			GL_C(glBindBuffer(GL_ARRAY_BUFFER, mesh->colorVbo));
 			GL_C(glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)0));
 
-			GL_C(glEnableVertexAttribArray(3));
-			GL_C(glBindBuffer(GL_ARRAY_BUFFER, mesh->uvVbo));
-			GL_C(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, 0, (void*)0));
-
 			glDrawArrays(GL_TRIANGLES, 0, (GLsizei)mesh->positions.size() / 3);
 			icount++;
 		}
@@ -681,7 +666,7 @@ namespace demo {
 	}
 
 
-	void findHandles(
+	void selectHandles(
 
 		const int numVertices,
 		const Adj& adj,
@@ -691,26 +676,26 @@ namespace demo {
 		const int unconstrainedRegionSize,
 
 		std::vector<int>& handles,
-		int& stationaryBegin,
-		int& unconstrainedBegin)
+		std::vector<int>& unconstrained,
+		int& boundaryBegin)
 	{
-		std::vector<bool> unconstrainedSet;
-		std::vector<bool> bhandlesSet;
+		std::vector<int> currentRing;
+		currentRing.push_back(mainHandle);
 
 		std::vector<bool> visited;
 		for (int i = 0; i < numVertices; ++i) {
 			visited.push_back(false);
 		}
 
+		std::vector<bool> unconstrainedSet;
+		std::vector<bool> handlesSet;
+
 		for (int i = 0; i < numVertices; ++i) {
 			unconstrainedSet.push_back(false);
-			bhandlesSet.push_back(false);
+			handlesSet.push_back(false);
 		}
 
-		std::vector<int> currentRing;
-		currentRing.push_back(mainHandle);
-
-		while (handles.size() < handleRegionSize) {
+		for (int k = 0; k < handleRegionSize; ++k) {
 
 			std::vector<int> nextRing;
 
@@ -723,7 +708,7 @@ namespace demo {
 
 				handles.push_back(e);
 				visited[e] = true;
-				bhandlesSet[e] = true;
+				handlesSet[e] = true;
 
 				const std::vector<int>& adjs = adj[e];
 				for (int j = 0; j < adjs.size(); ++j) {
@@ -733,10 +718,8 @@ namespace demo {
 			}
 			currentRing = nextRing;
 		}
-		unconstrainedBegin = (int)handles.size();
-
-		while (handles.size() < (handleRegionSize + unconstrainedRegionSize)) {
-
+		
+		for (int k = 0; k < unconstrainedRegionSize; ++k) {
 			std::vector<int> nextRing;
 
 			for (int i = 0; i < currentRing.size(); ++i) {
@@ -745,7 +728,7 @@ namespace demo {
 				if (visited[e])
 					continue;
 
-				handles.push_back(e);
+				unconstrained.push_back(e);
 				visited[e] = true;
 				unconstrainedSet[e] = true;
 
@@ -757,19 +740,15 @@ namespace demo {
 			currentRing = nextRing;
 		}
 
-		stationaryBegin = (int)handles.size();
+		boundaryBegin = (int)handles.size();
 
-		std::vector<int> staticVertices;
 		for (int i = 0; i < currentRing.size(); ++i) {
 			int e = currentRing[i];
 
 			if (visited[e])
 				continue;
 
-			staticVertices.push_back(e);
-
 			handles.push_back(e);
-
 			visited[e] = true;
 		}
 	}
@@ -790,127 +769,116 @@ namespace demo {
 
 
 	void deformMesh() {
-
 		std::vector<vec3> meshPositions;
 		std::vector<vec3> meshNormals;
 		std::vector<vec3> meshColors;
-		std::vector<int> meshCells;
-		Adj arm_adj;
+		std::vector<int> meshCells; 
+		Adj adj;// vertex adjacency info.
 
 		loadMesh("../armadillo.ply", meshPositions, meshNormals, meshCells);
-		arm_adj = getAdj((int)meshPositions.size(), meshCells);
-
-		std::vector<int> tempHandles;
-		int tempStationaryBegin;
-		int tempUnconstrainedBegin;
-
-		findHandles(
-
-			(int)meshPositions.size(),
-			arm_adj,
-
-			2096, // mainHandle
-			400, // handleRegionSize
-			6600, // unconstrainedRegionSize
-
-
-			tempHandles,
-			tempStationaryBegin,
-			tempUnconstrainedBegin);
-
-		for (int i = 0; i < meshPositions.size(); ++i) {
-			meshColors.push_back(vec3(0.0, 0.0, 0.0));
-		}
-
-		for (int i = 0; i < tempHandles.size(); ++i) {
-			int handle = tempHandles[i];
-
-			vec3 c = vec3(0.0f, 0.0f, 0.0f);
-			if (i < tempUnconstrainedBegin) {
-				c = vec3(0.3f, 0.3f, 0.0f);
-			}
-			else if (i < tempStationaryBegin) {
-				c = vec3(0.0f, 0.0f, 0.3f);
-			}
-
-			meshColors[handle] = c;
-		}
+		adj = getAdj((int)meshPositions.size(), meshCells);
 
 		std::vector<int> handles;
-		for (int i = 0; i < tempUnconstrainedBegin; ++i) {
-			handles.push_back(tempHandles[i]);
-		}
-		for (int i = tempStationaryBegin; i < tempHandles.size(); ++i) {
-			handles.push_back(tempHandles[i]);
-		}
-		int unconstrainedBegin = handles.size();
+		std::vector<int> unconstrained;
+		int boundaryBegin;
 
-		for (int i = tempUnconstrainedBegin; i < tempStationaryBegin; ++i) {
-			handles.push_back(tempHandles[i]);
-		}
+		selectHandles(
 
-		prepareDeform(
-			meshCells.data(), (int)meshCells.size(),
-			(double *)meshPositions.data(), (int)meshPositions.size() * 3,
-			handles.data(), (int)handles.size(),
+			(int)meshPositions.size(),
+			adj,
+			2096, 
+			15, 
+			35,
+			handles,
+			unconstrained,
+			boundaryBegin);
 
-			unconstrainedBegin,
-			true);
-
-		double* arr = new double[(unconstrainedBegin) * 3];
-
-		int j = 0;
-		for (int i = 0; i < (tempUnconstrainedBegin); ++i) {
-
-			arr[j * 3 + 0] = meshPositions[tempHandles[i]].x + 0.0f;
-			arr[j * 3 + 1] = meshPositions[tempHandles[i]].y + 0.2f; // 0.4
-			arr[j * 3 + 2] = meshPositions[tempHandles[i]].z + 0.0f;
-			++j;
-		}
-
-		for (int i = tempStationaryBegin; i < (handles.size()); ++i) {
-			arr[j * 3 + 0] = meshPositions[tempHandles[i]].x;
-			arr[j * 3 + 1] = meshPositions[tempHandles[i]].y;
-			arr[j * 3 + 2] = meshPositions[tempHandles[i]].z;
-
-			++j;
-		}
-		// deform.
-		doDeform(arr, (int)j, (double *)meshPositions.data());
-
-		calcNormals(meshPositions, meshCells, meshNormals);
-
-		std::vector<vec2> uvs;
-		uvs.clear();
-		for (int i = 0; i < meshPositions.size(); ++i) {
-			uvs.push_back(vec2(0.0f, 0.0f));
-		}
-
-		Mesh* mesh = new Mesh();
-
-		for (int ic = 0; ic < meshCells.size(); ic += 3) {
-			for (int j = 0; j < 3; ++j) {
-
-				mesh->positions.push_back(meshPositions[meshCells[ic + j]].x);
-				mesh->positions.push_back(meshPositions[meshCells[ic + j]].y);
-				mesh->positions.push_back(meshPositions[meshCells[ic + j]].z);
-
-				mesh->normals.push_back(meshNormals[meshCells[ic + j]].x);
-				mesh->normals.push_back(meshNormals[meshCells[ic + j]].y);
-				mesh->normals.push_back(meshNormals[meshCells[ic + j]].z);
-
-				mesh->colors.push_back(meshColors[meshCells[ic + j]].x);
-				mesh->colors.push_back(meshColors[meshCells[ic + j]].y);
-				mesh->colors.push_back(meshColors[meshCells[ic + j]].z);
-
-				mesh->uvs.push_back(uvs[meshCells[ic + j]].x);
-				mesh->uvs.push_back(uvs[meshCells[ic + j]].y);
-
+		// choose vertex colors.
+		{
+			for (int i = 0; i < meshPositions.size(); ++i) {
+				meshColors.push_back(vec3(0.0, 0.0, 0.0));
+			}
+			for (int i = 0; i < handles.size(); ++i) {
+				vec3 c = vec3(0.0f, 0.0f, 0.0f);
+				c = vec3(0.3f, 0.3f, 0.0f);
+				meshColors[handles[i]] = c;
+			}
+			for (int i = 0; i < unconstrained.size(); ++i) {
+				vec3 c = vec3(0.0f, 0.0f, 0.3f);
+				meshColors[unconstrained[i]] = c;
 			}
 		}
 
-		meshes.push_back(mesh);
+		std::vector<int> combined;
+		{
+			// put all handles and unconstrained in one array, and send to solver. 
+			for (int i = 0; i < handles.size(); ++i) {
+				combined.push_back(handles[i]);
+			}
+			int unconstrainedBegin = handles.size();
+			for (int i = 0; i < unconstrained.size(); ++i) {
+				combined.push_back(unconstrained[i]);
+			}
 
+			prepareDeform(
+				meshCells.data(), (int)meshCells.size(),
+				(double *)meshPositions.data(), (int)meshPositions.size() * 3,
+				combined.data(), (int)combined.size(),
+
+				unconstrainedBegin,
+				true);
+		}
+
+		double* arr = new double[(handles.size()) * 3];
+
+		// move the handles. but the boundary vertices keep their old position.
+		{
+			int j = 0;
+			for (int i = 0; i < (boundaryBegin); ++i) {
+				arr[j * 3 + 0] = meshPositions[handles[i]].x + 0.0f;
+				arr[j * 3 + 1] = meshPositions[handles[i]].y + 0.2f; // 0.4
+				arr[j * 3 + 2] = meshPositions[handles[i]].z + 0.0f;
+
+				++j;
+			}
+
+			for (int i = boundaryBegin; i < (handles.size()); ++i) {
+				arr[j * 3 + 0] = meshPositions[handles[i]].x;
+				arr[j * 3 + 1] = meshPositions[handles[i]].y;
+				arr[j * 3 + 2] = meshPositions[handles[i]].z;
+
+				++j;
+			}
+		}
+
+		doDeform(arr, (int)handles.size(), (double *)meshPositions.data());
+
+		// alright, the mesh has been deformed. now calculuate normals, and save the mesh
+		{
+			calcNormals(meshPositions, meshCells, meshNormals);
+
+
+			Mesh* mesh = new Mesh();
+
+			for (int ic = 0; ic < meshCells.size(); ic += 3) {
+				for (int j = 0; j < 3; ++j) {
+
+					mesh->positions.push_back(meshPositions[meshCells[ic + j]].x);
+					mesh->positions.push_back(meshPositions[meshCells[ic + j]].y);
+					mesh->positions.push_back(meshPositions[meshCells[ic + j]].z);
+
+					mesh->normals.push_back(meshNormals[meshCells[ic + j]].x);
+					mesh->normals.push_back(meshNormals[meshCells[ic + j]].y);
+					mesh->normals.push_back(meshNormals[meshCells[ic + j]].z);
+
+					mesh->colors.push_back(meshColors[meshCells[ic + j]].x);
+					mesh->colors.push_back(meshColors[meshCells[ic + j]].y);
+					mesh->colors.push_back(meshColors[meshCells[ic + j]].z);
+				}
+			}
+
+			meshes.push_back(mesh);
+		}
 	}
 
 	void runDemo() {
@@ -921,11 +889,9 @@ namespace demo {
 			"layout(location = 0) in vec3 vsPos;"
 			"layout(location = 1) in vec3 vsNormal;"
 			"layout(location = 2) in vec3 vsColor;"
-			"layout(location = 3) in vec2 vsUv;"
-
+			
 			"out vec3 fsPos;"
 			"out vec3 fsNormal;"
-			"out vec2 fsUv;"
 			"out vec3 fsColor;"
 
 			"uniform mat4 uVp;"
@@ -933,7 +899,6 @@ namespace demo {
 			"{"
 			"  fsPos = vsPos;"
 			"  fsNormal = vsNormal;"
-			"  fsUv = vsUv;"
 			"  fsColor = vsColor;"
 			"  gl_Position = uVp * vec4(vsPos, 1.0);"
 			"}",
@@ -941,21 +906,14 @@ namespace demo {
 			"#version 330\n"
 			"in vec3 fsPos;"
 			"in vec3 fsNormal;"
-			"in vec2 fsUv;"
 
 			"in vec3 fsColor;"
 
 			"uniform vec3 uEyePos;"
 
-			"uniform sampler2D uColorTex;"
-
-			"out vec4 geoData[3];"
-
 			"void main()"
 			"{"
 
-			// output geometry.
-			//"  geoData[0] = vec4(fsNormal.rgb, 1);"
 
 			"vec3 color = fsColor + vec3(0.0, 0.0, 0.4);"
 
